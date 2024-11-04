@@ -65,9 +65,11 @@ df$pizza_category <- factor(df$pizza_category)
 
 Dữ liệu của cột order_time là kiểu POSIXct và hiển thị dưới dạng yyyy-mm-dd HH:mm:ss. Nhằm phục vụ mục đích phân tích, em sẽ dựa vào cột này để tạo cột mới có tên order_hour thể hiện giờ đặt bánh của khách.
 ```{r}
-df$order_time <- as.character(df$order_time)
+df$order_time <- format(df$order_time, "%H:%M:%S")
+```
 
-df <- df %>% mutate(order_hour = sub(".* (..:..):..", "\\1", df$order_time))
+```{r}
+df <- df %>% mutate(order_hour = format(df$order_time, "%H"))
 ```
 
 Kiểm tra lại dữ liệu
@@ -97,8 +99,45 @@ df <- mutate(df, order_month = format(order_date, "%B"))
 ## 6.3. Phân tích thành phần nguyên liệu:
 
 ## 6.4. Phân tích lượng sales và doanh thu theo pizza, size, category:
+
+### 6.4.1. Lượng sales và doanh thu theo kích thước pizza
+
+* Tính lượng bánh pizza bán được, tổng doanh thu và trung bình doanh thu mỗi đơn theo kích thước bánh pizza 
 ```{r}
-df
+sales_by_size <- df %>%
+  group_by(pizza_size) %>%
+  summarise(
+    total_revenue = sum(total_price)
+  )
+
+sales_by_size
+```
+* Trực quan hóa tổng Doanh Thu theo kích thước pizza
+
+```{r}
+ggplot(sales_by_size, aes(x = pizza_size, y = total_revenue, fill = pizza_size)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Tổng Doanh Thu theo Kích Thước Pizza", x = "Kích Thước Pizza", y = "Tổng Doanh Thu") +
+  theme_minimal()
+```
+* Kiểm định giả thuyết thống kê
+```{r}
+anova_size <- aov(total_revenue ~ pizza_size, data = sales_by_size)
+summary(anova_size)
+```
+```{r}
+# Assuming df is your original dataframe
+df1 <- df %>%
+  group_by(pizza_size, pizza_category) %>%
+  summarise(price = median(total_price), .groups = 'drop')
+
+# Create a treemap using ggplot2
+ggplot(df1, aes(area = price, fill = pizza_size, label = pizza_category)) +
+  geom_treemap() +
+  geom_treemap_text(colour = "white", place = "centre", grow = TRUE) +
+  scale_fill_manual(values = c('lightgrey', 'gold', 'darkblue')) +
+  theme_minimal() +
+  labs(title = "Treemap of Pizza Prices", fill = "Pizza Size")
 ```
 
 
