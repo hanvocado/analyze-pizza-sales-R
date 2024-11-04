@@ -66,10 +66,8 @@ df$pizza_category <- factor(df$pizza_category)
 Dữ liệu của cột order_time là kiểu POSIXct và hiển thị dưới dạng yyyy-mm-dd HH:mm:ss. Nhằm phục vụ mục đích phân tích, em sẽ dựa vào cột này để tạo cột mới có tên order_hour thể hiện giờ đặt bánh của khách.
 ```{r}
 df$order_time <- format(df$order_time, "%H:%M:%S")
-```
 
-```{r}
-df <- df %>% mutate(order_hour = format(df$order_time, "%H"))
+df <- df %>% mutate(order_hour = sub("(..:..):..", "\\1", df$order_time))
 ```
 
 Kiểm tra lại dữ liệu
