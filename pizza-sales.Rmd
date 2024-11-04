@@ -1,0 +1,49 @@
+---
+title: "pizza-sales"
+author: "Nguyen Thi Ngoc Han"
+date: "2024-11-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Phần 1. Tóm tắt:
+
+# Phần 2. Giới thiệu:
+
+# Phần 3. Mục tiêu phân tích:
+
+# Phần 4. Thông tin về tập dữ liệu:
+
+# Phần 5. Làm sạch dữ liệu:
+
+# Phần 6. Phân tích dữ liệu:
+
+## 6.1. Phân tích tổng quan:
+
+## 6.2. Phân tích nhu cầu tiêu thụ pizza theo thời gian:
+
+## 6.3. Phân tích thành phần nguyên liệu:
+
+## 6.4. Phân tích lượng sales và doanh thu theo pizza, size, category:
+
+# Phần 7. Xây dựng mô hình dự đoán:
+
+## 7.1. Dự đoán lượng đặt hàng của từng loại và kích thước pizza theo thời gian:
+
+## 7.2. Dự đoán doanh thu của 6 tháng tiếp theo:
+
+## 7.3. Dự báo nhu cầu nguyên liệu theo ngày trong tuần
+
+# Phần 8. Kết luận
+
+# Phần 9. Phụ lục
+
+# Phần 10. Đóng góp
+
+
+
+
+
