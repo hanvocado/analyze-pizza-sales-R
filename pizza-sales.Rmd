@@ -47,7 +47,7 @@ Dữ liệu của cột order_time là kiểu POSIXct và hiển thị dưới d
 
 df$order_time <- as.character(df$order_time)
 
-df <- df %>% mutate(order_hour = sub(".* (.*):.*", "\\1", df$order_time))
+df <- df %>% mutate(order_hour = sub(".* (.*):(.*):(.*)", "\\1", df$order_time))
 ```
 
 Kiểm tra lại dữ liệu
