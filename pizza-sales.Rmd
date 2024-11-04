@@ -7,6 +7,8 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
 ```
 
 # Phần 1. Tóm tắt:
@@ -17,7 +19,52 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Phần 4. Thông tin về tập dữ liệu:
 
+```{r}
+sales_df <- read_excel("./data/Pizza Sales.xlsx")
+
+head(sales_df)
+```
+```{r}
+str(sales_df)
+```
+
 # Phần 5. Làm sạch dữ liệu:
+
+Sao chép dữ liệu vào biến df để xử lý trên bản sao không gây ảnh hưởng đến dữ liệu gốc.
+```{r}
+df <- sales_df
+```
+
+## 5.1. Kiểm tra số lượng giá trị bị thiếu (na) ở các cột
+```{r}
+colSums(is.na(df))
+```
+Không tồn tại giá trị na.
+
+## 5.2. Xử lý cột order_time
+Dữ liệu của cột order_time là kiểu POSIXct và hiển thị dưới dạng yyyy-mm-dd HH:mm:ss. Nhằm phục vụ mục đích phân tích, em sẽ dựa vào cột này để tạo cột mới có tên order_hour.
+```{r}
+
+df$order_time <- as.character(df$order_time)
+
+df <- df %>% mutate(order_hour = sub(".* (.*):(.*):(.*)", "\\1", df$order_time))
+```
+
+Kiểm tra lại dữ liệu
+```{r}
+head(df)
+```
+
+## 5.3. Chuyển đổi cột pizza_size thành factor
+
+Xem các giá trị duy nhất của cột này để xác định thành phần trong levels của factor
+```{r}
+unique(df$pizza_size)
+```
+Thực hiện chuyển cột pizza_size thành factor
+```{r}
+df$pizza_size <- factor(df$pizza_size, levels = c("S", "M", "L", "XL", "XXL"))
+```
 
 # Phần 6. Phân tích dữ liệu:
 
