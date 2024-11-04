@@ -80,12 +80,16 @@ head(df)
 Thêm cột mới tên order_weekday cho biết khách hàng đã đặt đơn vào thứ mấy.
 ```{r}
 df <- mutate(df, order_weekday = weekdays(order_date))
+df$order_weekday <- factor(df$order_weekday, levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))
 ```
 
 ## 5.4. Tạo cột order_month
 Thêm cột mới tên order_weekday cho biết khách hàng đã đặt đơn vào tháng nào bằng cách format giá trị của cột order_date.
+
 ```{r}
 df <- mutate(df, order_month = format(order_date, "%B"))
+
+df$order_month <- factor(df$order_month, levels = c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"))
 ```
 
 # Phần 6. Phân tích dữ liệu:
@@ -98,9 +102,38 @@ df <- mutate(df, order_month = format(order_date, "%B"))
 
 ## 6.4. Phân tích lượng sales và doanh thu theo pizza, size, category:
 
-### 6.4.1. Lượng sales và doanh thu theo kích thước pizza
+### 6.4.1. Doanh số bán hàng của từng bánh pizza
 
-* Tính lượng bánh pizza bán được, tổng doanh thu và trung bình doanh thu mỗi đơn theo kích thước bánh pizza 
+* Tính tổng doanh số bán hàng của từng bánh pizza 
+
+```{r}
+pizza_monthly_sales <- df %>%
+  group_by(pizza_name) %>%
+  summarise(
+    total_sales = sum(quantity),
+    total_revenue = sum(total_price)
+  )
+
+summary(pizza_monthly_sales)
+```
+* Trực quan hóa bảng số liệu trên bằng biểu đồ cột
+
+```{r}
+ggplot(pizza_monthly_sales, aes(x = total_sales, y = reorder(pizza_name, total_sales))) +
+  geom_col(color = "pink", fill = "pink", width = 0.5) +
+  labs(title = "Doanh số bán hàng",
+       x = "Số lượng",
+       y = "Pizza") +
+  theme_minimal()
+```
+** Nhận xét:
+- Pizza bán chạy nhất là The Classic Deluxe Pizza.
+- Pizza bán chậm nhất là The Brie Carre Pizza, và nó chỉ bằng khoảng 50% doanh số của pizza bán chậm thứ hai (The Mediterranean Pizza), đây là một chênh lệch rất lớn.
+
+### 6.4.2. Doanh thu theo kích cỡ pizza
+
+* Tính tổng doanh thu cho mỗi loại kích cỡ bánh pizza 
+
 ```{r}
 sales_by_size <- df %>%
   group_by(pizza_size) %>%
@@ -110,48 +143,69 @@ sales_by_size <- df %>%
 
 sales_by_size
 ```
-* Trực quan hóa tổng Doanh Thu theo kích thước pizza
+
+* Trực quan hóa bảng số liệu trên bằng biểu đồ tròn
+```{r}
+ggplot(sales_by_size, aes(x = "", y = total_revenue, fill = pizza_size)) +
+  geom_bar(stat = "identity") +
+  coord_polar(theta = "y") +
+  labs(title = "Doanh thu theo kích cỡ pizza") +
+  theme_void()
+```
+
+** Nhật xét:
+- Bánh pizza cỡ L mang lại gần 50% doanh thu của cửa hàng, tiếp theo sau là các size M, S.
+- Doanh thu của bánh cỡ XL và XXL là vô cùng nhỏ.
+- Vậy khách hàng thường mua bánh pizza có kích cỡ trung bình hoặc nhỏ và hiếm khi mua bánh cỡ lớn.
+
+### 6.4.3. Doanh thu theo loại bánh pizza
 
 ```{r}
-ggplot(sales_by_size, aes(x = pizza_size, y = total_revenue, fill = pizza_size)) +
-  geom_bar(stat = "identity") +
-  labs(title = "Tổng Doanh Thu theo Kích Thước Pizza", x = "Kích Thước Pizza", y = "Tổng Doanh Thu") +
+category_monthly_revenue <- df %>%
+  group_by(order_month, pizza_category) %>%
+  summarise(
+    total_revenue = sum(total_price)
+  )
+
+head(category_monthly_revenue)
+```
+
+* Trực quan hóa bảng số liệu trên bằng biểu đồ cột:
+```{r}
+ggplot(category_monthly_revenue, aes(x = pizza_category, y = total_revenue, fill = order_month)) +
+  geom_col() +
+  labs(title = "Tổng doanh thu theo loại bánh pizza",
+       x = "Loại pizza",
+       y = "Doanh thu (USD)",
+       fill = "Tháng") +
   theme_minimal()
 ```
-* Kiểm định giả thuyết thống kê
-```{r}
-anova_size <- aov(total_revenue ~ pizza_size, data = sales_by_size)
-summary(anova_size)
-```
-```{r}
-# Assuming df is your original dataframe
-df1 <- df %>%
-  group_by(pizza_size, pizza_category) %>%
-  summarise(price = median(total_price), .groups = 'drop')
+** Nhận xét: 
+- Loại bánh pizza classic có doanh thu cao nhất, theo sau là supreme, chicken và cuối cùng là veggie.
+- Nhìn chung không có sự khác biệt đáng kể giữa doanh thu các tháng của từng loại pizza.
 
-# Create a treemap using ggplot2
-ggplot(df1, aes(area = price, fill = pizza_size, label = pizza_category)) +
-  geom_treemap() +
-  geom_treemap_text(colour = "white", place = "centre", grow = TRUE) +
-  scale_fill_manual(values = c('lightgrey', 'gold', 'darkblue')) +
-  theme_minimal() +
-  labs(title = "Treemap of Pizza Prices", fill = "Pizza Size")
+* Kiểm tra xem sự khác biệt trong doanh thu giữa các loại pizza có ý nghĩa thống kê không:
+```{r}
+anova_result <- aov(total_revenue ~ pizza_category, data = category_monthly_revenue)
+summary(anova_result)
 ```
-
+** Nhận xét:
+- p-value (Pr(>F)) bằng 2.76e-07, nhỏ hơn mức ý nghĩa thông thường nên ta có đủ bằng chứng để bác bỏ giả thuyết không.
+- F value bằng 16.36, giá trị cao này cho thấy rằng biến động doanh thu giữa các loại pizza lớn hơn sự biến động trong từng loại. Củng cố thêm kết luận sự khác biệt của doanh thu giữa các loại pizza là có ý nghĩa.
 
 # Phần 7. Xây dựng mô hình dự đoán:
 
-## 7.1. Dự đoán lượng đặt hàng của từng loại và kích thước pizza theo thời gian:
+## 7.1. Dự đoán lượng đặt hàng của từng loại và kích cỡ pizza theo thời gian:
 
 ## 7.2. Dự đoán doanh thu của 6 tháng tiếp theo:
 
-## 7.3. Dự báo nhu cầu nguyên liệu theo ngày trong tuần
+## 7.3. Dự báo nhu cầu nguyên liệu theo ngày trong tuần:
 
-# Phần 8. Kết luận
+# Phần 8. Kết luận:
 
-# Phần 9. Phụ lục
+# Phần 9. Phụ lục:
 
-# Phần 10. Đóng góp
+# Phần 10. Đóng góp:
 
 
 
