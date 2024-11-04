@@ -35,22 +35,30 @@ Sao chép dữ liệu vào biến df để xử lý trên bản sao không gây 
 df <- sales_df
 ```
 
-## 5.1. Kiểm tra số lượng giá trị bị thiếu (na) ở các cột
+## 5.1. Kiểm tra giá trị thiếu (na) và trùng lặp (duplicate)
+* Kiểm tra xem có tồn tại giá trị thiếu (na) ở các cột hay không
 ```{r}
 colSums(is.na(df))
 ```
 Không tồn tại giá trị na.
 
-## 5.2. Chuyển đổi cột pizza_size thành factor
+* Kiểm tra xem có tồn tại duplicate hay không
+```{r}
+any(duplicated(df))
+```
+Không có quan sát nào bị trùng lặp
 
-Xem các giá trị duy nhất của cột này để xác định thành phần trong levels của factor
+## 5.2. Chuyển đổi cột pizza_size, pizza_category thành factor
+
+Xem các giá trị duy nhất của cột pizza_size và pizza_category để xác định thành phần trong levels của factor
 ```{r}
 unique(df$pizza_size)
+unique(df$pizza_category)
 ```
-
-Thực hiện chuyển cột pizza_size thành factor
+Thực hiện chuyển đổi thành factor
 ```{r}
 df$pizza_size <- factor(df$pizza_size, levels = c("S", "M", "L", "XL", "XXL"))
+df$pizza_category <- factor(df$pizza_category)
 ```
 
 ## 5.3. Tạo cột order_hour
@@ -59,7 +67,7 @@ Dữ liệu của cột order_time là kiểu POSIXct và hiển thị dưới d
 ```{r}
 df$order_time <- as.character(df$order_time)
 
-df <- df %>% mutate(order_hour = sub(".* (.*):(.*):(.*)", "\\1", df$order_time))
+df <- df %>% mutate(order_hour = sub(".* (..:..):..", "\\1", df$order_time))
 ```
 
 Kiểm tra lại dữ liệu
@@ -89,6 +97,10 @@ df <- mutate(df, order_month = format(order_date, "%B"))
 ## 6.3. Phân tích thành phần nguyên liệu:
 
 ## 6.4. Phân tích lượng sales và doanh thu theo pizza, size, category:
+```{r}
+df
+```
+
 
 # Phần 7. Xây dựng mô hình dự đoán:
 
