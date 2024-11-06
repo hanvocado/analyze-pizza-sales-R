@@ -23,7 +23,7 @@ library(ggplot2)
 ```{r}
 sales_df <- read_excel("./data/Pizza Sales.xlsx")
 
-sales_df
+head(sales_df)
 ```
 ```{r}
 str(sales_df)
