@@ -11,6 +11,7 @@ library(readxl)
 library(ggplot2)
 library(arules)
 library(arulesViz)
+library(randomForest)
 ```
 
 # Phần 1. Tóm tắt:
@@ -306,13 +307,47 @@ sales_data %>%
 ```
 Biểu đồ cho thấy có mối quan hệ tương quan giữa doanh số với giá bán, kích cỡ và danh mục. Đồng thời, có sự biến động lớn trong sales nên khi tạo mô hình hồi quy tuyến tính, em sẽ sử dụng logarithmic transformation trên biến sales.
 
-
 ```{r}
 price_sales_model <- lm(log(sales) ~ unit_price * pizza_size + pizza_category, data = sales_data)
 summary(price_sales_model)
 ```
 Giá trị *p-value* là 0.001141, nhỏ hơn mức ý nghĩa thông thường (0.05) nên ta đủ bằng chứng bác bỏ giả thuyết $H_0$ và kết luận giá bánh có ảnh hưởng tới doanh số của nó.
 
+```{r}
+summary(sales_data)
+```
+
+
+#### random forest
+```{r}
+# Chia dữ liệu thành tập huấn luyện và kiểm tra
+set.seed(123)  # Để đảm bảo kết quả có thể tái tạo
+train_index <- sample(1:nrow(sales_data), 0.7 * nrow(sales_data))
+train_data <- sales_data[train_index, ]
+test_data <- sales_data[-train_index, ]
+
+```
+
+```{r}
+# Xây dựng mô hình Random Forest
+rf_model <- randomForest(sales ~ unit_price + pizza_size + pizza_category, data = train_data)
+
+# Xem kết quả mô hình
+print(rf_model)
+
+```
+```{r}
+# Dự đoán trên dữ liệu kiểm tra
+predictions <- predict(rf_model, newdata = test_data)
+
+# Tính toán lỗi RMSE (Root Mean Squared Error)
+rmse <- sqrt(mean((predictions - test_data$sales)^2))
+print(paste("RMSE: ", rmse))
+```
+```{r}
+# Đánh giá độ quan trọng của các biến
+importance(rf_model)
+```
 
 # Phần 7. Khám phá quy luật kết hợp trong hành vi mua pizza của khách
 
