@@ -64,65 +64,51 @@ df$pizza_category <- factor(df$pizza_category)
 
 ## 5.3. Tạo cột order_hour
 
-Dữ liệu của cột order_time là kiểu POSIXct và hiển thị dưới dạng yyyy-mm-dd HH:mm:ss. Nhằm phục vụ mục đích phân tích, em sẽ dựa vào cột này để tạo cột mới có tên order_hour thể hiện giờ đặt bánh của khách.
+Dữ liệu của cột order_time là kiểu POSIXct, được lưu trữ dưới dạng số thực đơn vị giây tính từ ngày 1 tháng 1 năm 1970, 00:00:00 UTC, và hiển thị dưới dạng yyyy-mm-dd HH:mm:ss. Nhằm phục vụ mục đích phân tích, em sẽ dựa vào cột này để tạo cột order_hour thể hiện giờ đặt bánh của khách.
 ```{r}
-# Định dạng lại order_time thành chuỗi giờ phút giây
-df$order_time <- format(df$order_time, "%H:%M:%S")
+temp_time <- format(df$order_time, "%H:%M:%S")
+df <- df %>% mutate(order_hour = sub("(..:..):..", "\\1", temp_time))
 
-df <- df %>% mutate(order_hour = sub("(..:..):..", "\\1", df$order_time))
-```
-
-Kiểm tra lại dữ liệu
-```{r}
 head(df)
 ```
 
 ## 5.4. Tạo cột order_weekday
 
-Thêm cột mới tên order_weekday cho biết khách hàng đã đặt đơn vào thứ mấy.
+Thêm cột mới tên order_weekday có kiểu factor cho biết khách hàng đã đặt đơn vào thứ mấy.
 ```{r}
 df <- mutate(df, order_weekday = weekdays(order_date))
 df$order_weekday <- factor(df$order_weekday, levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))
+
+head(df)
 ```
 
 ## 5.4. Tạo cột order_month
-Thêm cột mới tên order_weekday cho biết khách hàng đã đặt đơn vào tháng nào bằng cách format giá trị của cột order_date.
+Thêm cột mới tên order_month có kiểu factor cho biết khách hàng đã đặt đơn vào tháng nào.
 
 ```{r}
 df <- mutate(df, order_month = format(order_date, "%B"))
 
 df$order_month <- factor(df$order_month, levels = c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"))
+
 head(df)
 ```
 
 # Phần 6. Phân tích dữ liệu:
 
 ## 6.1. Phân tích tổng quan:
-# 6.1.1.Phân tích tổng quan về doanh thu: tổng doanh thu bán hàng, doanh thu trung bình (giá trị trung bình của một đơn đặt hàng), doanh thu lớn nhất và doanh thu nhỏ nhất:
-```{r}
-# Tính toán các thống kê tổng hợp
-summary_total_price <- df %>% 
-  summarise(
-    sum_total_price = sum(total_price), 
-    mean_total_price = mean(total_price), 
-    max_total_price = max(total_price), 
-    min_total_price = min(total_price),
-)
-# Chuyển đổi dữ liệu thành pivot longer để trực quan hóa: 
-total_price_long <-summary_total_price %>% pivot_longer(cols = c(1,2,3,4), names_to = "statistic", values_to = "value")
-total_price_long
-ggplot(total_price_long, aes(x = statistic, y = value)) +
-  geom_bar(stat = "identity", fill = "red") +
-  theme_minimal() +
-  labs(title = "Thống kê tổng quan về doanh thu bán hàng theo đơn đặt hàng",
-       x = "Statistic",
-       y = "Value (USD)")
 
-```
-# 6.1.2. Phân tích tổng quan về pizza cho mỗi đơn hàng: tổng số lượng pizza được đặt cho mỗi loại và kích thước, giá trung bình của pizza được đặt cho mỗi loại và kích thước cho mỗi đơn hàng,  
 ```{r}
-df %>% summarise(total_quantity_per_order = sum(quantity), mean_unit_price_per_order = mean(unit_price), )
+df %>% select(order_id) %>% unique() %>% count()
 ```
+```{r}
+df %>% summarise(no_pizzas = sum(quantity), total_revenue = sum(total_price))
+```
+Trong năm 2015, cửa hàng có 21350 đơn đặt hàng, bán ra tổng 49574 chiến bánh pizza với tổng doanh thu là 817860 USD. 
+
+```{r}
+df %>% group_by(order_id) %>% summarise(order_total = sum(total_price), quantity = sum(quantity)) %>% ungroup() %>% summary()
+```
+Giá trị đơn hàng nhỏ nhất là 9.75$, lớn nhất là 444.40$. Trung bình, một đơn đặt hàng trị giá 32.5$ và mua 2.322 chiếc bánh pizza.
 
 ## 6.2. Phân tích nhu cầu tiêu thụ pizza theo thời gian:
 
@@ -138,8 +124,6 @@ df %>% summarise(total_quantity_per_order = sum(quantity), mean_unit_price_per_o
 pizzas_sales <- df %>%
   group_by(pizza_name) %>% 
   summarise(total_sales = sum(quantity))
-
-summary(pizzas_sales)
 
 sprintf("Số bánh pizza cửa hàng kinh doanh: %s", length(pizzas_sales$pizza_name))
 ```
@@ -196,6 +180,87 @@ Kết quả cho thấy giá pizza không ảnh hưởng đến doanh số bán h
 plot(price_sales_model)
 ```
 
+### 6.4.2. Doanh số theo kích cỡ bánh
+
+```{r}
+sales_by_size <- df %>%
+  group_by(pizza_size) %>%
+  summarise(
+    total_revenue = sum(total_price),
+    total_sales = sum(quantity)
+  )
+
+sales_by_size
+```
+* Trực quan hóa bảng số liệu trên bằng biểu đồ tròn
+```{r}
+ggplot(sales_by_size, aes(x = "", y = total_revenue, fill = pizza_size)) +
+  geom_bar(stat = "identity") +
+  coord_polar(theta = "y") +
+  labs(title = "Doanh thu theo kích cỡ pizza") +
+  theme_void()
+```
+
+** Nhật xét:
+- Bánh pizza cỡ L mang lại gần 50% doanh thu của cửa hàng, tiếp theo sau là các size M, S.
+- Doanh thu của bánh cỡ XL và XXL là vô cùng nhỏ.
+
+### 6.4.3. Doanh thu theo loại bánh pizza
+
+* Số loại bánh pizza và số lượng bánh của mỗi loại.
+
+```{r}
+category <- df %>% select(pizza_category, pizza_name) %>% unique()
+summary(category)
+```
+Có 4 loại bánh là Chicken, Classic, Supreme và Veggie. Trong đó, Chicken có ít bánh nhất (6), Classic có 8 và nhiều nhất là Supreme và Veggie đều có 9 bánh.
+
+* Phân tích giá bán của các loại pizza.
+
+```{r}
+category_price <- df %>% select(pizza_category, pizza_id, unit_price) %>% unique()
+category_price %>% ggplot(aes(y = unit_price, x = pizza_category)) +
+  geom_boxplot()
+```
++) Giá trung bình của bánh loại Classic là thấp nhất, cao nhất là Supreme, nhưng nhìn chung không có sự khác biệt quá lớn giữa giá trung bình các loại.
++) Classic có khoảng biến động giá lớn nhất và có giá trị ngoại lai.
+
+* Doanh thu theo tháng của mỗi loại bánh.
+
+```{r}
+category_monthly_revenue <- df %>%
+  group_by(order_month, pizza_category) %>%
+  summarise(
+    total_revenue = sum(total_price)
+  )
+
+head(category_monthly_revenue)
+```
+
+* Trực quan hóa bảng số liệu trên bằng biểu đồ cột:
+
+```{r}
+ggplot(category_monthly_revenue, aes(x = pizza_category, y = total_revenue, fill = order_month)) +
+  geom_col() +
+  labs(title = "Tổng doanh thu theo loại bánh pizza",
+       x = "Loại pizza",
+       y = "Doanh thu (USD)",
+       fill = "Tháng") +
+  theme_minimal()
+```
+** Nhận xét: 
+- Loại bánh pizza classic có doanh thu cao nhất, theo sau là supreme, chicken và cuối cùng là veggie.
+- Nhìn chung không có sự khác biệt đáng kể giữa doanh thu các tháng của từng loại pizza.
+
+#### Kiểm tra xem sự khác biệt trong doanh thu giữa các loại pizza có ý nghĩa thống kê không
+
+```{r}
+anova_result <- aov(total_revenue ~ pizza_category, data = category_monthly_revenue)
+summary(anova_result)
+```
+** Nhận xét:
+- p-value (Pr(>F)) bằng 2.76e-07, nhỏ hơn mức ý nghĩa thông thường nên ta có đủ bằng chứng để bác bỏ giả thuyết không.
+- F value bằng 16.36, giá trị cao này cho thấy rằng biến động doanh thu giữa các loại pizza lớn hơn sự biến động trong từng loại. Củng cố thêm kết luận sự khác biệt của doanh thu giữa các loại pizza là có ý nghĩa.
 
 ## 6.5. Phân tích doanh thu
 
