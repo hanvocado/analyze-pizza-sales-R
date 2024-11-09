@@ -67,7 +67,7 @@ df$pizza_category <- factor(df$pizza_category)
 Dữ liệu của cột order_time là kiểu POSIXct, được lưu trữ dưới dạng số thực đơn vị giây tính từ ngày 1 tháng 1 năm 1970, 00:00:00 UTC, và hiển thị dưới dạng yyyy-mm-dd HH:mm:ss. Nhằm phục vụ mục đích phân tích, em sẽ dựa vào cột này để tạo cột order_hour thể hiện giờ đặt bánh của khách.
 ```{r}
 temp_time <- format(df$order_time, "%H:%M:%S")
-df <- df %>% mutate(order_hour = sub("(..:..):..", "\\1", temp_time))
+df <- df %>% mutate(order_hour = sub("(..):..:..", "\\1", temp_time))
 
 head(df)
 ```
@@ -93,6 +93,14 @@ df$order_month <- factor(df$order_month, levels = c("January", "February", "Marc
 head(df)
 ```
 
+## 5.5. Tạo data frame chứa dữ liệu của từng đơn đặt hàng
+```{r}
+by_order_df <- df %>% group_by(order_id) %>% 
+  summarise(quantity = sum(quantity), order_date = order_date[1], total_price = sum(total_price), order_hour = order_hour[1], order_weekday = order_weekday[1], order_month = order_month[1])
+
+head(by_order_df)
+``` 
+
 # Phần 6. Phân tích dữ liệu:
 
 ## 6.1. Phân tích tổng quan:
@@ -111,6 +119,100 @@ df %>% group_by(order_id) %>% summarise(order_total = sum(total_price), quantity
 Giá trị đơn hàng nhỏ nhất là 9.75$, lớn nhất là 444.40$. Trung bình, một đơn đặt hàng trị giá 32.5$ và mua 2.322 chiếc bánh pizza.
 
 ## 6.2. Phân tích nhu cầu tiêu thụ pizza theo thời gian:
+
+Biểu đồ nhu cầu tiêu thụ pizza theo giờ
+```{r}
+ggplot(data = df, aes(x = order_hour, y = quantity)) +
+  geom_col(fill = "blue") +  
+  theme_minimal() +
+  labs(x = "Hour", y = "Frequency", title = "Pizza Consumption Demand by Hour") +
+  theme(plot.title = element_text(hjust = 0.5)
+  )
+```
+Biểu đồ cho thấy sự phân bố số lượng đơn đặt hàng theo từng giờ trong ngày
+
+Giờ có lượng đơn hàng cao nhất là từ 12h đến 13h trưa. Thời gian từ 17h đến 18h cũng có lượng đơn hàng khá cao. Hai khoảng giờ cao điểm này có thể là các thời điểm mà người tiêu dùng có nhiều thời gian rảnh sau giờ làm việc cho bữa ăn trưa và ăn tối. Các khung giờ khác có số lượng đơn hàng giảm dần và thấp nhất là vào khoảng 9h,10h sáng và 23h khuya.
+
+Dựa vào biểu đồ này, ta có thể quan sát rõ hành vi của người tiêu dùng. Giờ trưa và giờ tan làm có thể là lúc người tiêu dùng có thời gian và nhu cầu đặt thức ăn nhiều hơn. Điều này giúp nhà hàng lập kế hoạch hỗ trợ và chiến lược quảng cáo tốt hơn để thu hút và giữ chân khách hàng.
+
+```{r}
+ggplot(data = df, aes(x = order_weekday, y = quantity)) +
+  geom_col(fill = "blue") + 
+  theme_minimal() +
+  labs(x = "Date", y = "Frequency", title = "Pizza Consumption Demand by Day") +
+  theme(plot.title = element_text(hjust = 0.5)
+  )
+```
+- Thứ Sáu có nhu cầu cao nhất. Điều này cho thấy mọi người có xu hướng đặt pizza nhiều hơn khi cuối tuần đến gần. Còn lại các ngày khác trong tuần, từ Thứ Hai đến Thứ Năm, nhu cầu tương đối ổn định cho thấy sự tiêu thụ pizza đều đặn trong suốt các ngày làm việc.Nhu cầu thấp nhất vào Chủ Nhật, có khả năng cao khách hàng chuẩn bị cho tuần làm việc sắp tới.
+- Biểu đồ cho thấy nhu cầu tiêu thụ pizza tăng cao vào cuối tuần, đạt đỉnh vào Thứ Sáu, có thể do các buổi tụ họp xã hội hoặc xu hướng ăn uống ngoài khi bắt đầu cuối tuần. 
+
+```{r}
+ggplot(data = df, aes(x = order_month, y = quantity)) +
+  geom_col(fill = "blue") +  
+  theme_minimal() +
+  labs(x = "Months", y = "Frequency", title = "Pizza Consumption Demand by Month") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1) ,
+        plot.title = element_text(hjust = 0.5))  
+```
+- Các tháng có nhu cầu cao nhất là Tháng Bảy và Tháng Mười Một, cho thấy những khoảng thời gian này có thể có các sự kiện đặc biệt hoặc kỳ nghỉ lễ khiến nhu cầu tăng lên.
+- Tháng Hai và Tháng Chín có nhu cầu tiêu thụ pizza thấp hơn so với các tháng khác, có thể do đây là khoảng thời gian sau các kỳ nghỉ lễ hoặc đầu mùa học tập và làm việc.
+- Nhìn chung, mức tiêu thụ pizza trong các tháng khá đồng đều, chỉ có sự chênh lệch nhẹ giữa các tháng. Điều này cho thấy pizza là món ăn được ưa chuộng quanh năm, bất kể mùa hay thời điểm.
+- Nhu cầu tiêu thụ pizza dường như ổn định trong suốt cả năm, với một số tháng có nhu cầu cao hơn, đặc biệt là vào mùa hè (Tháng Bảy) và vào mùa lễ (Tháng Mười Một). Sự tăng giảm nhẹ giữa các tháng có thể phản ánh sự thay đổi trong thói quen ăn uống của người tiêu dùng theo mùa và các dịp lễ.
+
+
+```{r fig.width=10, fig.height=5}
+ggplot(by_order_df, aes(x = order_month, fill = order_weekday)) +
+  geom_bar(position = "dodge", color = "black") +  
+  scale_fill_brewer(palette = "Pastel1") +         
+  theme_minimal() +
+  labs(x = "Months", y = "Frequency", title = "Pizza Consumption Demand by Day of the Week for Each Month") + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1) ,
+        plot.title = element_text(hjust = 0.5)) 
+```
+- Sự phổ biến vào cuối tuần: Trong hầu hết các tháng, Thứ Sáu và Thứ Bảy có xu hướng có tần suất đặt hàng cao hơn, cho thấy nhu cầu tiêu thụ pizza tăng vào cuối tuần, có thể do đây là thời điểm mọi người có thời gian rảnh rỗi hoặc tổ chức các buổi tụ họp.
+- Biến động theo tháng: Tháng Năm, Tháng Bảy, và Tháng Mười có một số ngày có tần suất cao hơn rõ rệt (đặc biệt vào các ngày cuối tuần), có thể do những tháng này có các sự kiện, kỳ nghỉ hoặc thời tiết thuận lợi cho các hoạt động ăn uống ngoài trời.
+- Nhu cầu ổn định giữa tuần: Nhu cầu tiêu thụ pizza vào các ngày giữa tuần (Thứ Hai đến Thứ Năm) ổn định hơn, với ít biến động giữa các tháng. Điều này cho thấy pizza vẫn được tiêu thụ đều đặn nhưng không quá cao vào những ngày đầu tuần và giữa tuần.
+- Chênh lệch theo ngày: Sự khác biệt về tần suất giữa các ngày trong tuần lớn nhất vào những tháng mùa hè và mùa thu, cho thấy nhu cầu có thể bị ảnh hưởng bởi mùa hoặc các kỳ nghỉ kéo dài.
+- Ta có thể kết luận rằng nhu cầu tiêu thụ pizza thay đổi theo cả tháng và ngày trong tuần, với xu hướng tiêu thụ cao vào các ngày bắt đầu cuối tuần và một số tháng cụ thể có kì nghỉ lễ hoặc thời tiết đẹp. Điều này có thể được sử dụng để dự đoán nhu cầu và tối ưu hóa nguồn cung cho các khoảng thời gian cao điểm trong năm.
+
+```{r}
+ggplot(data = by_order_df, aes(x = order_weekday, y = order_hour, color = order_weekday)) +
+  geom_jitter(width = 0.2, height = 0) + # Tạo độ nhiễu ngang để các điểm không bị chồng lên nhau 
+  theme_minimal() +
+  labs(x = "Order Dates", y = "Hour", title = "Pizza Consumption Demand by Hour of the Dates") +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5)
+  )
+```
+- Các đơn đặt hàng tập trung chủ yếu vào khoảng từ trưa (11 giờ) đến tối (22 giờ), biểu hiện khoảng thời gian từ trưa đến tối là thời gian cao điểm cho nhu cầu tiêu thụ pizza, đặc biệt vào Thứ Sáu và Thứ Bảy. Ngoài khung giờ này là các điểm dữ liệu ngoài (outliers) cho các đơn hàng vào sáng sớm hoặc đêm muộn. Điều này cho thấy có một số ít đơn đặt hàng trong khoảng thời gian ngoài giờ cao điểm.
+- Có thể thấy ít có sự biến động giữa các ngày trong tuần và xu hướng chung là tiêu thụ pizza ổn định từ buổi trưa đến tối. Không có ngày nào có sự biến động lớn hoặc bất thường. Nhu cầu khá ổn định trong cả tuần nhưng có xu hướng cao hơn vào Thứ Sáu và Thứ Bảy
+
+```{r, fig.width=10, fig.height=5}
+df_table <- table(by_order_df$order_hour, by_order_df$order_weekday)
+df_freq <- as.data.frame(df_table)
+colnames(df_freq) <- c("Hour", "Day", "Frequency")
+
+
+ggplot(df_freq, aes(x = Hour, y = Frequency, fill = Day)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8))  + 
+  scale_fill_manual(values = c("blue", "red", "green", "yellow", "magenta", "cyan", "purple", "orange")) +
+  theme_minimal() +
+  labs(title = "Pizza Consumption Frequency by Hour of the Day", x = "Hour", y = "Frequency") +
+  theme(
+    plot.title = element_text(hjust = 0.5),  
+    legend.title = element_blank()           
+  ) +
+  theme(legend.position = "right") +         
+  theme(plot.margin = unit(c(1,1,1,1), "cm")) + 
+  scale_x_discrete(expand = expansion(mult = c(0.1, 0.1))) 
+```
+- Thời gian cao điểm: Các giờ cao điểm tiêu thụ pizza tập trung vào buổi trưa (11 giờ - 13 giờ) và buổi tối (17 giờ - 19 giờ). Đỉnh cao nhất của nhu cầu là vào khoảng 12 giờ trưa, với tần suất đặt hàng cao nhất vượt qua 900 đơn vào một số ngày trong tuần, đặc biệt vào các ngày Thứ Ba, Thứ Năm, và Thứ Sáu.
+- Sự khác biệt theo ngày trong tuần:
+Thứ Ba và Thứ Sáu: Có tần suất tiêu thụ pizza cao vào giờ trưa (11 giờ - 13 giờ) và buổi tối (17 giờ - 19 giờ).
+Thứ Bảy: Tần suất đặt hàng tăng cao vào buổi tối từ 17 giờ đến 19 giờ, có thể do đây là ngày cuối tuần.
+Chủ Nhật: Tần suất tiêu thụ pizza giảm vào buổi trưa nhưng vẫn có mức độ đặt hàng tương đối ổn định vào buổi tối.
+- Thời gian ít đơn đặt hàng: Trong các khoảng thời gian sáng sớm (trước 10 giờ) và đêm muộn (sau 21 giờ), tần suất tiêu thụ pizza khá thấp ở tất cả các ngày. Đặc biệt là từ 22 giờ đến 23 giờ, nhu cầu tiêu thụ pizza gần như không đáng kể.
 
 ## 6.3. Phân tích thành phần nguyên liệu:
 
