@@ -8,9 +8,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(readxl)
+library(ggplot2)
 library(arules)
 library(arulesViz)
-library(splines)
 ```
 
 # Phần 1. Tóm tắt:
@@ -66,6 +66,7 @@ df$pizza_category <- factor(df$pizza_category)
 
 Dữ liệu của cột order_time là kiểu POSIXct và hiển thị dưới dạng yyyy-mm-dd HH:mm:ss. Nhằm phục vụ mục đích phân tích, em sẽ dựa vào cột này để tạo cột mới có tên order_hour thể hiện giờ đặt bánh của khách.
 ```{r}
+# Định dạng lại order_time thành chuỗi giờ phút giây
 df$order_time <- format(df$order_time, "%H:%M:%S")
 
 df <- df %>% mutate(order_hour = sub("(..:..):..", "\\1", df$order_time))
@@ -91,11 +92,37 @@ Thêm cột mới tên order_weekday cho biết khách hàng đã đặt đơn v
 df <- mutate(df, order_month = format(order_date, "%B"))
 
 df$order_month <- factor(df$order_month, levels = c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"))
+head(df)
 ```
 
 # Phần 6. Phân tích dữ liệu:
 
 ## 6.1. Phân tích tổng quan:
+# 6.1.1.Phân tích tổng quan về doanh thu: tổng doanh thu bán hàng, doanh thu trung bình (giá trị trung bình của một đơn đặt hàng), doanh thu lớn nhất và doanh thu nhỏ nhất:
+```{r}
+# Tính toán các thống kê tổng hợp
+summary_total_price <- df %>% 
+  summarise(
+    sum_total_price = sum(total_price), 
+    mean_total_price = mean(total_price), 
+    max_total_price = max(total_price), 
+    min_total_price = min(total_price),
+)
+# Chuyển đổi dữ liệu thành pivot longer để trực quan hóa: 
+total_price_long <-summary_total_price %>% pivot_longer(cols = c(1,2,3,4), names_to = "statistic", values_to = "value")
+total_price_long
+ggplot(total_price_long, aes(x = statistic, y = value)) +
+  geom_bar(stat = "identity", fill = "red") +
+  theme_minimal() +
+  labs(title = "Thống kê tổng quan về doanh thu bán hàng theo đơn đặt hàng",
+       x = "Statistic",
+       y = "Value (USD)")
+
+```
+# 6.1.2. Phân tích tổng quan về pizza cho mỗi đơn hàng: tổng số lượng pizza được đặt cho mỗi loại và kích thước, giá trung bình của pizza được đặt cho mỗi loại và kích thước cho mỗi đơn hàng,  
+```{r}
+df %>% summarise(total_quantity_per_order = sum(quantity), mean_unit_price_per_order = mean(unit_price), )
+```
 
 ## 6.2. Phân tích nhu cầu tiêu thụ pizza theo thời gian:
 
