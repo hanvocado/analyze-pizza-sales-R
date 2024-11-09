@@ -11,6 +11,8 @@ library(readxl)
 library(ggplot2)
 library(arules)
 library(arulesViz)
+library(car)
+library(randomForest)
 ```
 
 # Phần 1. Tóm tắt:
@@ -216,7 +218,7 @@ Chủ Nhật: Tần suất tiêu thụ pizza giảm vào buổi trưa nhưng v�
 
 ## 6.3. Phân tích thành phần nguyên liệu:
 
-## 6.4. Phân tích và dự đoáns doanh số (sales):
+## 6.4. Phân tích và dự đoán doanh số (sales):
 
 ### 6.4.1. Phân tích doanh số bán hàng của từng bánh pizza
 
@@ -242,6 +244,22 @@ sales_by_pizza %>%
 ```
 +) Pizza bán chạy nhất là The Classic Deluxe Pizza với 2453 bánh.
 +) Pizza bán chậm nhất là The Brie Carre Pizza với 490 bánh. Ta có thể dễ dàng nhận thấy sự chênh lệch rất lớn giữa doanh số của nó với các bánh khác, trong đó, chỉ bằng khoảng 50% doanh số của pizza bán chậm thứ hai (The Mediterranean Pizza) và bằng khoảng 20% doanh số của bánh bán chạy nhất.
+
+* Xem các thuộc tính của hai bánh này để dự đoán nguyên nhân gây ra sự chênh lệch lớn 
+
+```{r}
+df %>% select(pizza_name, pizza_size, unit_price, pizza_category, pizza_ingredients) %>% 
+  group_by(pizza_name) %>% filter(pizza_name == 'The Classic Deluxe Pizza' | pizza_name == 'The Brie Carre Pizza' | pizza_name == 'The Mediterranean Pizza') %>% unique()
+```
+Có thể nhận thấy sự chênh lệch rất lớn, gần gấp đôi trong giá của The Brie Carre Pizza size S (23.65 USD) và The Classic Deluxe Pizza hay The Mediterranean Pizza size S (12 USD). Do đó em cho rằng biến unit_price và pizza_size có ảnh hưởng tới doanh số, hơn thế nữa hai biến này là hai biến tương tác. Bên cạnh đó, sự khác biệt trong doanh số giữa The Classic Deluxe Pizza và The Mediterranean Pizza mặc dù chúng có mức giá gần như giống hệt nhau cho các kích cỡ. Điều này cho thấy pizza_category cũng ảnh hưởng tới doanh số. Biến pizza_ingredients sẽ trực tiếp phản ánh tới pizza_cateogry nên em bỏ qua nó.
+Ngoài ra, The Brie Carre Pizza chỉ có một kích cỡ trong khi đa số bánh còn lại có nhiều kích cỡ, em nghi ngờ độ đa dạng của một bánh pizza ảnh hưởng tới doanh số của nó. Trực quan hóa để kiểm tra:
+
+```{r}
+df %>% select(pizza_name, pizza_size) %>% unique() %>% 
+  group_by(pizza_name) %>% summarise(no_variants = n()) %>% 
+  merge(sales_by_pizza) %>% ggplot(aes(x = no_variants, y = total_sales)) + geom_point()
+```
+Không có mối quan hệ tương quan giữa no_variants và total_sales, nghĩa là độ đa dạng của một bánh pizza không ảnh hưởng tới doanh số của nó.
 
 ### 6.4.2. Phân tích doanh số theo kích cỡ bánh
 
@@ -293,7 +311,7 @@ ggplot(sales_by_category, aes(x = pizza_category, y = total_sales, fill = order_
 Danh mục bánh Classic bánh chạy nhất với 14888 chiếc. Ba loại còn lại có sự chênh lệch không đáng kể với nhau, cụ thể Supreme là 11987, Veggie là 11649 và thấp nhất là Chicken với 11050 chiếc bánh.
 Đối với từng danh mục pizza, doanh số không có sự chênh lệch nào đáng kể giữa các tháng.
 
-### 6.4. Mô hình dự đoán doanh số
+### 6.4.4. Dự đoán doanh số bằng mô hình hồi quy tuyến tính
 
 * Trực quan hóa mối quan hệ giữa doanh số và giá cùng với kích cỡ và danh mục bánh.
 
@@ -301,75 +319,94 @@ Danh mục bánh Classic bánh chạy nhất với 14888 chiếc. Ba loại còn
 sales_data <- df %>%  group_by(unit_price, pizza_size, pizza_category, order_month) %>% summarise(sales = sum(quantity))
 
 sales_data %>% 
-  ggplot(aes(x = unit_price, y = sales, shape = pizza_size, color = pizza_category)) +
-  geom_jitter(size = 1.5)
+  ggplot(aes(x = unit_price, y = sales, color = pizza_size, shape = pizza_category)) +
+  geom_jitter()
 ```
-Biểu đồ cho thấy có mối quan hệ tương quan giữa doanh số với giá bán, kích cỡ và danh mục. Đồng thời, có sự biến động lớn trong sales nên khi tạo mô hình hồi quy tuyến tính, em sẽ sử dụng logarithmic transformation trên biến sales.
-
+Biểu đồ cho thấy tác động của giá bán lên sales khác nhau đối với các cỡ bánh khác nhau và các loại bánh khác nhau. Cụ thể như bánh size S giá thấp (~10) có doanh số cao hơn rất nhiều so với bánh size S giá trên 20 USD. Và cùng ở khoảng giá 20 USD nhưng doanh số của các danh mục chênh lệch nhau rất rõ rệt. Vì vậy, ngoài 3 biến độc lập unit_price, pizza_size, pizza_category em sẽ thêm sự tác giữa các biến vào mô hình hồi quy tuyến tính.
 
 ```{r}
-price_sales_model <- lm(log(sales) ~ unit_price * pizza_size + pizza_category, data = sales_data)
-summary(price_sales_model)
+lm_sales_model <- lm(sales ~ unit_price * (pizza_size + pizza_category), data = sales_data)
+summary(lm_sales_model)
 ```
-Giá trị *p-value* là 0.001141, nhỏ hơn mức ý nghĩa thông thường (0.05) nên ta đủ bằng chứng bác bỏ giả thuyết $H_0$ và kết luận giá bánh có ảnh hưởng tới doanh số của nó.
+F-statistic bằng 38.31 với p-value < 2.2e-16, cho thấy rằng mô hình hồi quy này có ý nghĩa thống kê và ít nhất một trong các biến độc lập có ảnh hưởng đáng kể đến doanh số. Cụ thể về ý nghĩa thống kê của từng biến, ngoại trừ pizza_sizeXL pizza_sizeXXL và các biến tương tác liên quan thì các biến độc lập và biến tương tác khác đều có p-value nhỏ, chứng tỏ chúng có ý nghĩa thống kê. Việc các biến giả của cỡ XL và XXL không có ý nghĩa thống kê và hệ số của các biến tương tác liên quan bị thiếu là do có rất ít dữ liệu cho các pizza cỡ XL hay XXL.
+Multiple R-squared bằng 0.5443 và Adjusted R-squared bằng 0.5301 cho thấy mô hình giải thích khoảng 54% biến động của biến phụ thuộc. Mặc dù không quá cao, giá trị này vẫn cho thấy mô hình có thể giải thích một phần đáng kể sự biến động doanh số trong tập dữ liệu.
+Để dự đoán doanh số chính xác hơn, em sẽ sử dụng mô hình random forest.
 
+### 6.4.4. Dự đoán doanh số bằng Random Forest
 
-# Phần 7. Khám phá quy luật kết hợp trong hành vi mua pizza của khách
+Nguyên nhân dùng random forest cho bài toán dự đoán doanh thu này là vì khả năng xử lý các mối quan hệ phức tạp giữa các biến độc lập một cách tự động mà không cần ta phải chỉ định biến tương tác. Cụ thể cho bài toán này, random forest có thể tự động nhận diện nếu có sự tương tác giữa unit_price, pizza_size, pizza_category và phản ánh chúng trong quá trình xây dựng desicion tree.
 
-Trong phần này, em sẽ xác định các bánh pizza thường được khách hàng mua cùng nhau, từ đó cung cấp thông tin hữu ích cho chiến lược tiếp thị sản phẩm và nâng cao trải nghiệm của khách hàng.
-
-Để thực hiện điều này, em chọn thuật toán Apriori, đây là thuật toán đặc biệt hiệu quả trong việc tạo tập các sản phẩm và khai phá quy luật kết hợp của chúng.
-
-* Tạo danh sách chứa tên các pizza trong mỗi đơn hàng
+* Chia tập dữ liệu thành 80% cho huấn luyện và 20% cho kiểm tra.
 
 ```{r}
-pizzas_each_order <- df %>%
-  group_by(order_id) %>%
-  summarize(pizzas = list(pizza_name)) %>%
-  ungroup() %>% 
-  pull(pizzas)
+set.seed(123)  
+train_index <- sample(nrow(sales_data), 0.8 * nrow(sales_data))
+train_data <- sales_data[train_index, ]
+test_data <- sales_data[-train_index, ]
 ```
 
-* Định dạng danh sách trên thành transactions để làm dữ liệu đầu vào cho thuật toán Apriori
+* Xây dựng mô hình dự đoán doanh số
+```{r}
+rf_sales_model <- randomForest(sales ~ unit_price + pizza_size + pizza_category, data = train_data)
+
+rf_sales_model
+```
+Mô hình giải thích được 76% sự biến động của sales. Đây là một tỷ lệ khá cao, cho thấy mô hình đã học tốt từ dữ liệu và có khả năng dự đoán khá chính xác.
+
+* Tối ưu hóa mô hình:
+
+Hiện tại, số cây quyết định của mô hình là 500 và số biến được thử tại mỗi lần phân tách là 1.
+- Kiểm tra ngưỡng cây tối ưu chưa:
+```{r}
+plot(rf_sales_model)
+```
+Biểu đồ cho thấy số cây này là phù hợp vì error tại 500 đã rất nhỏ và gần như không còn giảm nữa.
+
+- Sử dụng tuneRF để tìm tham số mtry tối ưu cho mô hình:
 
 ```{r}
-transactions <- transactions(pizzas_each_order)
-transactions
+tune_rf <- tuneRF(sales_data[, -which(names(sales_data) == "sales")], sales_data$sales)
 ```
-Có 2135 giao dịch và 32 bánh pizza là đầu vào để thực hiện phân tích tổng hợp. Có cảnh báo là transactions đã bỏ đi có sản phẩm trùng lặp là do trong một giao dịch (hay order) khách hàng đã order một bánh pizza với nhiều kích cỡ khác nhau. Trong phần phân tích này em sẽ bỏ qua yếu tố kích cỡ.
-
-* Thực hiện phân tích bằng thuật toán Apriori 
+OOB Error rate là lỗi ngoài bộ dữ liệu huấn luyện, phản ánh độ chính xác của mô hình. Dự vào biểu đồ kết hợp với việc dữ liệu có 3 biến độc lập, mà chúng lại có tương tác phức tạp với nhau nên em chọn mtry = 2 để tối ưu mô hình.
 
 ```{r}
-rules <- apriori(transactions, parameter = list(supp = 0.001, conf = 0.3, minlen = 2))
+rf_sales_model <- randomForest(sales ~ unit_price + pizza_size + pizza_category, data = train_data, mtry = 2)
+
+rf_sales_model
 ```
+* Dự đoán doanh số trên tập dữ liệu kiểm tra
+
 ```{r}
-inspect(sort(rules, by = "confidence"))
-```
+predicted_sales <- predict(rf_sales_model, newdata = test_data)
 
+head(predicted_sales)
+```
+* Kiểm tra độ chính xác
 
 ```{r}
-summary(rules)
+actual_values <- test_data$sales
+
+# Tính R2 (R-squared)
+ss_total <- sum((actual_values - mean(actual_values))^2)
+ss_residual <- sum((actual_values - predicted_sales)^2)
+r_squared <- 1 - (ss_residual / ss_total)
+cat("R-squared:", r_squared)
 ```
+
 ```{r}
-plot(rules, method = "graph", engine = "htmlwidget")
+# Tính toán lỗi RMSE (Root Mean Squared Error)
+rmse <- sqrt(mean((predicted_sales - actual_values)^2))
+cat("RMSE", rmse)
 ```
 
 
+# Phần 7. Phân tích và dự đoán doanh thu:
 
-# Phần 8. Xây dựng mô hình dự đoán:
+# Phần 8. Kết luận:
 
-## 8.1. Dự đoán lượng đặt hàng của từng loại và kích cỡ pizza theo thời gian:
+# Phần 9. Phụ lục:
 
-## 8.2. Dự đoán doanh thu của 6 tháng tiếp theo:
-
-## 8.3. Dự báo nhu cầu nguyên liệu theo ngày trong tuần:
-
-# Phần 9. Kết luận:
-
-# Phần 10. Phụ lục:
-
-# Phần 11. Đóng góp:
+# Phần 10. Đóng góp:
 
 
 
