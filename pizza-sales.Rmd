@@ -4,11 +4,13 @@ author: "Nguyen Thi Ngoc Han"
 date: "2024-11-04"
 output: html_document
 ---
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(readxl)
+library(arules)
+library(arulesViz)
+library(splines)
 ```
 
 # Phần 1. Tóm tắt:
@@ -27,8 +29,7 @@ head(sales_df)
 ```{r}
 str(sales_df)
 ```
-
-# Phần 5. Làm sạch và xử lý dữ liệu:
+# Phần 5. Tiền xử lý dữ liệu:
 
 Sao chép dữ liệu vào biến df để xử lý trên bản sao không gây ảnh hưởng đến dữ liệu gốc.
 ```{r}
@@ -100,35 +101,76 @@ df$order_month <- factor(df$order_month, levels = c("January", "February", "Marc
 
 ## 6.3. Phân tích thành phần nguyên liệu:
 
-## 6.4. Phân tích lượng sales và doanh thu theo pizza, size, category:
+## 6.4. Phân tích doanh số (sales):
 
 ### 6.4.1. Doanh số bán hàng của từng bánh pizza
 
-* Tính tổng doanh số bán hàng của từng bánh pizza 
+* Nhóm dữ liệu theo tên pizza, kích cỡ, và đơn giá để tính doanh số
 
 ```{r}
-pizza_monthly_sales <- df %>%
-  group_by(pizza_name) %>%
-  summarise(
-    total_sales = sum(quantity),
-    total_revenue = sum(total_price)
-  )
+pizzas_sales <- df %>%
+  group_by(pizza_name) %>% 
+  summarise(total_sales = sum(quantity))
 
-summary(pizza_monthly_sales)
+summary(pizzas_sales)
+
+sprintf("Số bánh pizza cửa hàng kinh doanh: %s", length(pizzas_sales$pizza_name))
 ```
-* Trực quan hóa bảng số liệu trên bằng biểu đồ cột
+* Trực quan hóa doanh số của từng bánh pizza
 
 ```{r}
-ggplot(pizza_monthly_sales, aes(x = total_sales, y = reorder(pizza_name, total_sales))) +
+pizzas_sales %>%
+  ggplot(aes(x = total_sales, y = reorder(pizza_name, total_sales))) +
   geom_col(color = "pink", fill = "pink", width = 0.5) +
   labs(title = "Doanh số bán hàng",
        x = "Số lượng",
        y = "Pizza") +
   theme_minimal()
 ```
-** Nhận xét:
-- Pizza bán chạy nhất là The Classic Deluxe Pizza.
-- Pizza bán chậm nhất là The Brie Carre Pizza, và nó chỉ bằng khoảng 50% doanh số của pizza bán chậm thứ hai (The Mediterranean Pizza), đây là một chênh lệch rất lớn.
++) Pizza bán chạy nhất là The Classic Deluxe Pizza với 2453 bánh.
++) Pizza bán chậm nhất là The Brie Carre Pizza với 490 bánh. Ta có thể dễ dàng nhận thấy sự chênh lệch rất lớn giữa doanh số của nó với các bánh khác, trong đó, chỉ bằng khoảng 50% doanh số của pizza bán chậm thứ hai (The Mediterranean Pizza) và bằng khoảng 20% doanh số của bánh bán chạy nhất.
+
+```{r}
+df %>% filter(pizza_name == "The Classic Deluxe Pizza") %>% select(pizza_name, pizza_size, unit_price, pizza_category, pizza_ingredients) %>% unique()
+
+df %>% filter(pizza_name == "The Brie Carre Pizza") %>% select(pizza_name, pizza_size, unit_price, pizza_category, pizza_ingredients) %>% unique()
+```
+#### Phân tích ảnh hưởng của giá bánh đến doanh số bằng mô hình hồi quy tuyến tính
+
+Mục tiêu của phần này là kiểm tra xem liệu giá pizza có ảnh hưởng đến doanh số của nó hay không, nếu có thì ảnh hưởng thế nào (tăng hay giảm bao nhiêu khi giá tăng 1 USD).
+Giả thuyết không $H_0$ phát biểu như sau: Giá pizza không ảnh hưởng đến doanh số bán hàng. Để thực hiện kiểm định giả thuyết này, em dùng mô hình hồi quy tuyến tính với biến độc lập là unit_price và biến phụ thuộc là sales.
+
+* Trực quan hóa mối quan hệ giữa giá và doanh số
+
+```{r}
+sales_price <- df %>%  group_by(pizza_name, unit_price) %>% summarise(sales = sum(quantity))
+
+sales_price %>% 
+  ggplot(aes(x = unit_price, y = sales)) +
+  geom_point()
+```
+Biểu đồ cho thấy có sự biến động lớn trong sales và quan hệ giữa unit_price và sales có vẻ uốn cong phức tạp nên khi tạo mô hình hồi quy tuyến tính, em sẽ sử dụng logarithmic transformation trên biến sales và polynomial regression trên biến unit_price.
+
+* Tạo mô hình hồi quy tuyến tính
+
+```{r}
+price_sales_model <- lm(log(sales) ~ poly(unit_price, 3), data = sales_price)
+summary(price_sales_model)
+```
+
++) Giá trị của *Residuals* (phần dư) dao động từ -1.69173 đến 1.47720, và có sai số chuẩn bằng 0.5835 Các số liệu cho thấy sự chênh lệch khá lớn giữa giá trị thực tế và giá trị dự đoán từ mô hình.
+
++) Giá trị của *Multiple R-squared* bằng 0.2211 và *Adjusted R-squared* bằng 0.1943, cho thấy mô hình chỉ có thể giải thích khoảng 20% sự biến động của log(sales).
+
++) Giá trị *p-value* là 6.957e-05, nhỏ hơn mức ý nghĩa thông thường (0.05) nên ta đủ bằng chứng bác bỏ giả thuyết $H_0$.
+
+Kết quả cho thấy giá pizza không ảnh hưởng đến doanh số bán hàng.
+```{r}
+plot(price_sales_model)
+```
+
+
+## 6.5. Phân tích doanh thu
 
 ### 6.4.2. Doanh thu theo kích cỡ pizza
 
@@ -138,7 +180,8 @@ ggplot(pizza_monthly_sales, aes(x = total_sales, y = reorder(pizza_name, total_s
 sales_by_size <- df %>%
   group_by(pizza_size) %>%
   summarise(
-    total_revenue = sum(total_price)
+    total_revenue = sum(total_price),
+    total_sales = sum(quantity)
   )
 
 sales_by_size
@@ -156,9 +199,28 @@ ggplot(sales_by_size, aes(x = "", y = total_revenue, fill = pizza_size)) +
 ** Nhật xét:
 - Bánh pizza cỡ L mang lại gần 50% doanh thu của cửa hàng, tiếp theo sau là các size M, S.
 - Doanh thu của bánh cỡ XL và XXL là vô cùng nhỏ.
-- Vậy khách hàng thường mua bánh pizza có kích cỡ trung bình hoặc nhỏ và hiếm khi mua bánh cỡ lớn.
 
 ### 6.4.3. Doanh thu theo loại bánh pizza
+
+* Số loại bánh pizza và số lượng bánh của mỗi loại.
+
+```{r}
+category <- df %>% select(pizza_category, pizza_name) %>% unique()
+summary(category)
+```
+Có 4 loại bánh là Chicken, Classic, Supreme và Veggie. Trong đó, Chicken có ít bánh nhất (6), Classic có 8 và nhiều nhất là Supreme và Veggie đều có 9 bánh.
+
+* Phân tích giá bán của các loại pizza.
+
+```{r}
+category_price <- df %>% select(pizza_category, pizza_id, unit_price) %>% unique()
+category_price %>% ggplot(aes(y = unit_price, x = pizza_category)) +
+  geom_boxplot()
+```
++) Giá trung bình của bánh loại Classic là thấp nhất, cao nhất là Supreme, nhưng nhìn chung không có sự khác biệt quá lớn giữa giá trung bình các loại.
++) Classic có khoảng biến động giá lớn nhất và có giá trị ngoại lai.
+
+* Doanh thu theo tháng của mỗi loại bánh.
 
 ```{r}
 category_monthly_revenue <- df %>%
@@ -171,6 +233,7 @@ head(category_monthly_revenue)
 ```
 
 * Trực quan hóa bảng số liệu trên bằng biểu đồ cột:
+
 ```{r}
 ggplot(category_monthly_revenue, aes(x = pizza_category, y = total_revenue, fill = order_month)) +
   geom_col() +
@@ -184,7 +247,8 @@ ggplot(category_monthly_revenue, aes(x = pizza_category, y = total_revenue, fill
 - Loại bánh pizza classic có doanh thu cao nhất, theo sau là supreme, chicken và cuối cùng là veggie.
 - Nhìn chung không có sự khác biệt đáng kể giữa doanh thu các tháng của từng loại pizza.
 
-* Kiểm tra xem sự khác biệt trong doanh thu giữa các loại pizza có ý nghĩa thống kê không:
+#### Kiểm tra xem sự khác biệt trong doanh thu giữa các loại pizza có ý nghĩa thống kê không
+
 ```{r}
 anova_result <- aov(total_revenue ~ pizza_category, data = category_monthly_revenue)
 summary(anova_result)
@@ -193,19 +257,63 @@ summary(anova_result)
 - p-value (Pr(>F)) bằng 2.76e-07, nhỏ hơn mức ý nghĩa thông thường nên ta có đủ bằng chứng để bác bỏ giả thuyết không.
 - F value bằng 16.36, giá trị cao này cho thấy rằng biến động doanh thu giữa các loại pizza lớn hơn sự biến động trong từng loại. Củng cố thêm kết luận sự khác biệt của doanh thu giữa các loại pizza là có ý nghĩa.
 
-# Phần 7. Xây dựng mô hình dự đoán:
 
-## 7.1. Dự đoán lượng đặt hàng của từng loại và kích cỡ pizza theo thời gian:
+# Phần 7. Khám phá quy luật kết hợp trong hành vi mua pizza của khách
 
-## 7.2. Dự đoán doanh thu của 6 tháng tiếp theo:
+Trong phần này, em sẽ xác định các bánh pizza thường được khách hàng mua cùng nhau, từ đó cung cấp thông tin hữu ích cho chiến lược tiếp thị sản phẩm và nâng cao trải nghiệm của khách hàng.
 
-## 7.3. Dự báo nhu cầu nguyên liệu theo ngày trong tuần:
+Để thực hiện điều này, em chọn thuật toán Apriori, đây là thuật toán đặc biệt hiệu quả trong việc tạo tập các sản phẩm và khai phá quy luật kết hợp của chúng.
 
-# Phần 8. Kết luận:
+* Tạo danh sách chứa tên các pizza trong mỗi đơn hàng
 
-# Phần 9. Phụ lục:
+```{r}
+pizzas_each_order <- df %>%
+  group_by(order_id) %>%
+  summarize(pizzas = list(pizza_name)) %>%
+  ungroup() %>% 
+  pull(pizzas)
+```
 
-# Phần 10. Đóng góp:
+* Định dạng danh sách trên thành transactions để làm dữ liệu đầu vào cho thuật toán Apriori
+
+```{r}
+transactions <- transactions(pizzas_each_order)
+transactions
+```
+Có 2135 giao dịch và 32 bánh pizza là đầu vào để thực hiện phân tích tổng hợp. Có cảnh báo là transactions đã bỏ đi có sản phẩm trùng lặp là do trong một giao dịch (hay order) khách hàng đã order một bánh pizza với nhiều kích cỡ khác nhau. Trong phần phân tích này em sẽ bỏ qua yếu tố kích cỡ.
+
+* Thực hiện phân tích bằng thuật toán Apriori 
+
+```{r}
+rules <- apriori(transactions, parameter = list(supp = 0.001, conf = 0.3, minlen = 2))
+```
+```{r}
+inspect(sort(rules, by = "confidence"))
+```
+
+
+```{r}
+summary(rules)
+```
+```{r}
+plot(rules, method = "graph", engine = "htmlwidget")
+```
+
+
+
+# Phần 8. Xây dựng mô hình dự đoán:
+
+## 8.1. Dự đoán lượng đặt hàng của từng loại và kích cỡ pizza theo thời gian:
+
+## 8.2. Dự đoán doanh thu của 6 tháng tiếp theo:
+
+## 8.3. Dự báo nhu cầu nguyên liệu theo ngày trong tuần:
+
+# Phần 9. Kết luận:
+
+# Phần 10. Phụ lục:
+
+# Phần 11. Đóng góp:
 
 
 
