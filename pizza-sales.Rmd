@@ -96,7 +96,7 @@ head(df)
 ## 5.5. Tạo data frame chứa dữ liệu của từng đơn đặt hàng
 ```{r}
 by_order_df <- df %>% group_by(order_id) %>% 
-  summarise(quantity = sum(quantity), order_date = order_date[1], total_price = sum(total_price), order_hour = order_hour[1], order_weekday = order_weekday[1], order_month = order_month[1])
+  summarise(quantity = sum(quantity), order_date = order_date[1], total_price = sum(total_price), order_hour = order_hour[1], order_weekday = order_weekday[1], order_month = order_month[1]) %>% ungroup()
 
 head(by_order_df)
 ``` 
@@ -106,15 +106,15 @@ head(by_order_df)
 ## 6.1. Phân tích tổng quan:
 
 ```{r}
-df %>% select(order_id) %>% unique() %>% count()
+by_order_df %>% count()
 ```
 ```{r}
-df %>% summarise(no_pizzas = sum(quantity), total_revenue = sum(total_price))
+by_order_df %>% summarise(no_pizzas = sum(quantity), total_revenue = sum(total_price))
 ```
 Trong năm 2015, cửa hàng có 21350 đơn đặt hàng, bán ra tổng 49574 chiến bánh pizza với tổng doanh thu là 817860 USD. 
 
 ```{r}
-df %>% group_by(order_id) %>% summarise(order_total = sum(total_price), quantity = sum(quantity)) %>% ungroup() %>% summary()
+by_order_df %>% select(quantity, total_price) %>% summary()
 ```
 Giá trị đơn hàng nhỏ nhất là 9.75$, lớn nhất là 444.40$. Trung bình, một đơn đặt hàng trị giá 32.5$ và mua 2.322 chiếc bánh pizza.
 
