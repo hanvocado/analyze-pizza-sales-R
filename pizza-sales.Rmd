@@ -216,9 +216,9 @@ Chủ Nhật: Tần suất tiêu thụ pizza giảm vào buổi trưa nhưng v�
 
 ## 6.3. Phân tích thành phần nguyên liệu:
 
-## 6.4. Phân tích doanh số (sales):
+## 6.4. Phân tích và dự đoáns doanh số (sales):
 
-### 6.4.1. Doanh số bán hàng của từng bánh pizza
+### 6.4.1. Phân tích doanh số bán hàng của từng bánh pizza
 
 * Nhóm dữ liệu theo tên pizza, kích cỡ, và đơn giá để tính doanh số
 
@@ -243,7 +243,7 @@ sales_by_pizza %>%
 +) Pizza bán chạy nhất là The Classic Deluxe Pizza với 2453 bánh.
 +) Pizza bán chậm nhất là The Brie Carre Pizza với 490 bánh. Ta có thể dễ dàng nhận thấy sự chênh lệch rất lớn giữa doanh số của nó với các bánh khác, trong đó, chỉ bằng khoảng 50% doanh số của pizza bán chậm thứ hai (The Mediterranean Pizza) và bằng khoảng 20% doanh số của bánh bán chạy nhất.
 
-### 6.4.2. Doanh số theo kích cỡ bánh
+### 6.4.2. Phân tích doanh số theo kích cỡ bánh
 
 * Tổng hợp dữ liệu tính doanh số mỗi tháng của từng loại pizza
 ```{r}
@@ -266,7 +266,7 @@ ggplot(sales_by_size, aes(x = "", y = total_sales, fill = pizza_size)) +
 +) Bánh pizza cỡ L bán chạy nhất với 18956 chiếc bánh chiếm 38% doanh số, theo sau là cỡ M với 15635 bánh (32%) và cỡ S với 14403 bánh (29%).
 +) Bánh size XL và XXL có doanh số rất thấp, cả hai chỉ chiếm chưa tới 2% tổng doanh số của năm 2015.
 
-### 6.4.2. Doanh số theo danh mục bánh
+### 6.4.3. Phân tích doanh số theo danh mục bánh
 
 * Tổng hợp dữ liệu theo danh mục bánh
 ```{r}
@@ -293,239 +293,36 @@ ggplot(sales_by_category, aes(x = pizza_category, y = total_sales, fill = order_
 Danh mục bánh Classic bánh chạy nhất với 14888 chiếc. Ba loại còn lại có sự chênh lệch không đáng kể với nhau, cụ thể Supreme là 11987, Veggie là 11649 và thấp nhất là Chicken với 11050 chiếc bánh.
 Đối với từng danh mục pizza, doanh số không có sự chênh lệch nào đáng kể giữa các tháng.
 
+### 6.4. Mô hình dự đoán doanh số
 
-#### Kiểm định giá bánh có ảnh hưởng đến doanh số không bằng mô hình hồi quy tuyến tính
-
-Mục tiêu của phần này là kiểm tra xem liệu giá pizza có ảnh hưởng đến doanh số của nó hay không, nếu có thì ảnh hưởng thế nào (tăng hay giảm bao nhiêu khi giá tăng 1 USD).
-Giả thuyết không $H_0$ phát biểu như sau: Giá pizza không ảnh hưởng đến doanh số bán hàng. Để thực hiện kiểm định giả thuyết này, em dùng mô hình hồi quy tuyến tính với biến độc lập là unit_price và biến phụ thuộc là sales.
-
-* Trực quan hóa mối quan hệ giữa giá và doanh số
+* Trực quan hóa mối quan hệ giữa doanh số và giá cùng với kích cỡ và danh mục bánh.
 
 ```{r}
 sales_data <- df %>%  group_by(unit_price, pizza_size, pizza_category) %>% summarise(sales = sum(quantity))
 
 sales_data %>% 
-  ggplot(aes(x = unit_price, y = sales)) +
-  geom_point()
+  ggplot(aes(x = unit_price, y = sales, shape = pizza_size, color = pizza_category)) +
+  geom_point(size = 2)
 ```
-
-Biểu đồ cho thấy có sự biến động lớn trong sales và quan hệ giữa unit_price và sales có vẻ uốn cong nên khi tạo mô hình hồi quy tuyến tính, em sẽ sử dụng logarithmic transformation trên biến sales và polynomial regression trên biến unit_price.
-
-* Tạo mô hình hồi quy tuyến tính
+Biểu đồ cho thấy có sự biến động lớn trong sales nên khi tạo mô hình hồi quy tuyến tính, em sẽ sử dụng logarithmic transformation trên biến sales.
 
 ```{r}
-price_sales_model <- lm(log(sales) ~ poly(unit_price, 2), data = sales_data)
+price_sales_model <- lm(log(sales) ~ unit_price * pizza_size + pizza_category, data = sales_data)
 summary(price_sales_model)
 ```
 Giá trị *p-value* là 0.001141, nhỏ hơn mức ý nghĩa thông thường (0.05) nên ta đủ bằng chứng bác bỏ giả thuyết $H_0$ và kết luận giá bánh có ảnh hưởng tới doanh số của nó.
 
-#### Kiểm định kích cỡ có ảnh hưởng đến doanh số không bằng mô hình ANOVA
-
-#### Mô hình
-```{r}
-colSums(is.na(sales_data))
-
-```
-
+b) Kiểm định kích cỡ có ảnh hưởng đến doanh số không bằng mô hình hồi quy tuyến tính
 
 ```{r}
-sales_model <- lm(log(sales) ~ poly(unit_price, 2) * pizza_size + pizza_category, data = sales_data)
-summary(sales_model)
-```
-
-
-```{r}
-ggplot(sales_data, aes(x = unit_price, y = total_sales)) +
+ggplot(sales_data, aes(x = unit_price, y = log(sales))) +
   geom_jitter(aes(color = pizza_category, shape = pizza_size), size = 2) +
-  geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = FALSE, color = "blue") +
-  labs(title = "Relationship between Unit Price and Sales by Pizza Size and Category",
-       x = "Unit Price",
-       y = "Total Sales") +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "blue") +
+  labs(title = "Relationship between Unit Price and Sales by Pizza Size and Category") +
   theme_minimal() +
   scale_color_brewer(palette = "Set1")
 ```
-
-```{r}
-ggplot(sales_data, aes(x = pizza_size, y = total_sales, fill = pizza_category)) +
-  geom_boxplot() +
-  labs(title = "Doanh số theo kích cỡ và danh mục bánh pizza",
-       fill = "Danh mục",
-       x = "Pizza Size",
-       y = "Doanh số") +
-  theme_minimal() +
-  scale_fill_brewer(palette = "Set3") +
-  theme(legend.position = "bottom")
-```
-
-
-### 6.4.2. Doanh số theo kích cỡ bánh
-
-```{r}
-sales_by_size <- df %>%
-  group_by(pizza_size) %>%
-  summarise(
-    total_revenue = sum(total_price),
-    total_sales = sum(quantity)
-  )
-
-sales_by_size
-```
-* Trực quan hóa bảng số liệu trên bằng biểu đồ tròn
-```{r}
-ggplot(sales_by_size, aes(x = "", y = total_revenue, fill = pizza_size)) +
-  geom_bar(stat = "identity") +
-  coord_polar(theta = "y") +
-  labs(title = "Doanh thu theo kích cỡ pizza") +
-  theme_void()
-```
-
-** Nhật xét:
-- Bánh pizza cỡ L mang lại gần 50% doanh thu của cửa hàng, tiếp theo sau là các size M, S.
-- Doanh thu của bánh cỡ XL và XXL là vô cùng nhỏ.
-
-### 6.4.3. Doanh thu theo loại bánh pizza
-
-* Số loại bánh pizza và số lượng bánh của mỗi loại.
-
-```{r}
-category <- df %>% select(pizza_category, pizza_name) %>% unique()
-summary(category)
-```
-Có 4 loại bánh là Chicken, Classic, Supreme và Veggie. Trong đó, Chicken có ít bánh nhất (6), Classic có 8 và nhiều nhất là Supreme và Veggie đều có 9 bánh.
-
-* Phân tích giá bán của các loại pizza.
-
-```{r}
-category_price <- df %>% select(pizza_category, pizza_id, unit_price) %>% unique()
-category_price %>% ggplot(aes(y = unit_price, x = pizza_category)) +
-  geom_boxplot()
-```
-+) Giá trung bình của bánh loại Classic là thấp nhất, cao nhất là Supreme, nhưng nhìn chung không có sự khác biệt quá lớn giữa giá trung bình các loại.
-+) Classic có khoảng biến động giá lớn nhất và có giá trị ngoại lai.
-
-* Doanh thu theo tháng của mỗi loại bánh.
-
-```{r}
-category_monthly_revenue <- df %>%
-  group_by(order_month, pizza_category) %>%
-  summarise(
-    total_revenue = sum(total_price)
-  )
-
-head(category_monthly_revenue)
-```
-
-* Trực quan hóa bảng số liệu trên bằng biểu đồ cột:
-
-```{r}
-ggplot(category_monthly_revenue, aes(x = pizza_category, y = total_revenue, fill = order_month)) +
-  geom_col() +
-  labs(title = "Tổng doanh thu theo loại bánh pizza",
-       x = "Loại pizza",
-       y = "Doanh thu (USD)",
-       fill = "Tháng") +
-  theme_minimal()
-```
-** Nhận xét: 
-- Loại bánh pizza classic có doanh thu cao nhất, theo sau là supreme, chicken và cuối cùng là veggie.
-- Nhìn chung không có sự khác biệt đáng kể giữa doanh thu các tháng của từng loại pizza.
-
-#### Kiểm tra xem sự khác biệt trong doanh thu giữa các loại pizza có ý nghĩa thống kê không
-
-```{r}
-anova_result <- aov(total_revenue ~ pizza_category, data = category_monthly_revenue)
-summary(anova_result)
-```
-** Nhận xét:
-- p-value (Pr(>F)) bằng 2.76e-07, nhỏ hơn mức ý nghĩa thông thường nên ta có đủ bằng chứng để bác bỏ giả thuyết không.
-- F value bằng 16.36, giá trị cao này cho thấy rằng biến động doanh thu giữa các loại pizza lớn hơn sự biến động trong từng loại. Củng cố thêm kết luận sự khác biệt của doanh thu giữa các loại pizza là có ý nghĩa.
-
-## 6.5. Phân tích doanh thu
-
-### 6.4.2. Doanh thu theo kích cỡ pizza
-
-* Tính tổng doanh thu cho mỗi loại kích cỡ bánh pizza 
-
-```{r}
-sales_by_size <- df %>%
-  group_by(pizza_size) %>%
-  summarise(
-    total_revenue = sum(total_price),
-    total_sales = sum(quantity)
-  )
-
-sales_by_size
-```
-
-* Trực quan hóa bảng số liệu trên bằng biểu đồ tròn
-```{r}
-ggplot(sales_by_size, aes(x = "", y = total_revenue, fill = pizza_size)) +
-  geom_bar(stat = "identity") +
-  coord_polar(theta = "y") +
-  labs(title = "Doanh thu theo kích cỡ pizza") +
-  theme_void()
-```
-
-** Nhật xét:
-- Bánh pizza cỡ L mang lại gần 50% doanh thu của cửa hàng, tiếp theo sau là các size M, S.
-- Doanh thu của bánh cỡ XL và XXL là vô cùng nhỏ.
-
-### 6.4.3. Doanh thu theo loại bánh pizza
-
-* Số loại bánh pizza và số lượng bánh của mỗi loại.
-
-```{r}
-category <- df %>% select(pizza_category, pizza_name) %>% unique()
-summary(category)
-```
-Có 4 loại bánh là Chicken, Classic, Supreme và Veggie. Trong đó, Chicken có ít bánh nhất (6), Classic có 8 và nhiều nhất là Supreme và Veggie đều có 9 bánh.
-
-* Phân tích giá bán của các loại pizza.
-
-```{r}
-category_price <- df %>% select(pizza_category, pizza_id, unit_price) %>% unique()
-category_price %>% ggplot(aes(y = unit_price, x = pizza_category)) +
-  geom_boxplot()
-```
-+) Giá trung bình của bánh loại Classic là thấp nhất, cao nhất là Supreme, nhưng nhìn chung không có sự khác biệt quá lớn giữa giá trung bình các loại.
-+) Classic có khoảng biến động giá lớn nhất và có giá trị ngoại lai.
-
-* Doanh thu theo tháng của mỗi loại bánh.
-
-```{r}
-category_monthly_revenue <- df %>%
-  group_by(order_month, pizza_category) %>%
-  summarise(
-    total_revenue = sum(total_price)
-  )
-
-head(category_monthly_revenue)
-```
-
-* Trực quan hóa bảng số liệu trên bằng biểu đồ cột:
-
-```{r}
-ggplot(category_monthly_revenue, aes(x = pizza_category, y = total_revenue, fill = order_month)) +
-  geom_col() +
-  labs(title = "Tổng doanh thu theo loại bánh pizza",
-       x = "Loại pizza",
-       y = "Doanh thu (USD)",
-       fill = "Tháng") +
-  theme_minimal()
-```
-** Nhận xét: 
-- Loại bánh pizza classic có doanh thu cao nhất, theo sau là supreme, chicken và cuối cùng là veggie.
-- Nhìn chung không có sự khác biệt đáng kể giữa doanh thu các tháng của từng loại pizza.
-
-#### Kiểm tra xem sự khác biệt trong doanh thu giữa các loại pizza có ý nghĩa thống kê không
-
-```{r}
-anova_result <- aov(total_revenue ~ pizza_category, data = category_monthly_revenue)
-summary(anova_result)
-```
-** Nhận xét:
-- p-value (Pr(>F)) bằng 2.76e-07, nhỏ hơn mức ý nghĩa thông thường nên ta có đủ bằng chứng để bác bỏ giả thuyết không.
-- F value bằng 16.36, giá trị cao này cho thấy rằng biến động doanh thu giữa các loại pizza lớn hơn sự biến động trong từng loại. Củng cố thêm kết luận sự khác biệt của doanh thu giữa các loại pizza là có ý nghĩa.
+Biểu đồ cho thấy có mối quan hệ tương quan giữa doanh số với giá bán, kích cỡ và danh mục.
 
 
 # Phần 7. Khám phá quy luật kết hợp trong hành vi mua pizza của khách
