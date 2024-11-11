@@ -1,8 +1,20 @@
 ---
-title: "pizza-sales"
-author: "Nguyen Thi Ngoc Han"
+title: "PHÂN TÍCH VÀ XÂY DỰNG MÔ HÌNH DỰ ĐOÁN VỚI TẬP DỮ LIỆU BÁN HÀNG PIZZA RESTAURANT SALES"
+author:
+  - name: "Nguyễn Thị Ngọc Hân"
+    mssv: "22133017"
+  - name: "Nguyễn Hoàng"
+    mssv: "22133020"
+  - name: "Võ Triệu Phúc"
+    mssv: "22133043"
+  - name: "Nguyễn Thị Hồng Thơ"
+    mssv: "22151305"
 date: "2024-11-04"
-output: html_document
+output:
+  prettydoc::html_pretty:
+    theme: leonids
+    highlight: github
+    toc: true
 ---
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -13,11 +25,16 @@ library(arules)
 library(arulesViz)
 library(car)
 library(randomForest)
+library(broom)
 ```
 
 # Phần 1. Tóm tắt:
 
 # Phần 2. Giới thiệu:
+    
+  Dữ liệu được ví như “dầu mỏ của thế kỷ 21” nhờ khả năng thúc đẩy sự đổi mới và cải tiến trong nhiều lĩnh vực. Giá trị của dữ liệu không chỉ nằm ở bản thân các con số, mà còn ở những thông tin có thể khai thác và ứng dụng từ dữ liệu. Đặc biệt trong ngành F&B, khi được thu thập, phân tích và diễn giải đúng cách, dữ liệu bán hàng và hành vi của người tiêu dùng trở thành nguồn tài nguyên chiến lược quan trọng giúp doanh nghiệp đưa ra những quyết định chính xác, giảm thiểu rủi ro và thúc đẩy tăng trưởng. Hơn nữa, phân tích dữ liệu bán hàng sẽ giúp tối ưu hóa hàng tồn kho của doanh nghiệp, giảm tình trạng dư thừa, cũng như có thể tăng số lượng các mặt hàng phổ biến để tránh tình trạng thiếu hàng (sold out) và tối đa hóa doanh số cho doanh nghiệp. 
+  
+  Cùng với những mục đích trên, trong nghiên cứu này, nhóm chúng em thực hiện phân tích tập dữ liệu bán hàng năm 2015 của một cửa hàng pizza và phát triển các mô hình dự đoán doanh số và doanh thu. Từ đó, có thể rút ra những nhận định hữu ích để hỗ trợ việc ra quyết định kinh doanh, tăng cường hiệu quả hoạt động và xây dựng các chiến lược marketing phù hợp.
 
 # Phần 3. Mục tiêu phân tích:
 
@@ -84,7 +101,7 @@ df$order_weekday <- factor(df$order_weekday, levels = c("Monday", "Tuesday", "We
 head(df)
 ```
 
-## 5.4. Tạo cột order_month
+## 5.5. Tạo cột order_month
 Thêm cột mới tên order_month có kiểu factor cho biết khách hàng đã đặt đơn vào tháng nào.
 
 ```{r}
@@ -95,7 +112,7 @@ df$order_month <- factor(df$order_month, levels = c("January", "February", "Marc
 head(df)
 ```
 
-## 5.5. Tạo data frame chứa dữ liệu của từng đơn đặt hàng
+## 5.6. Tạo data frame chứa dữ liệu của từng đơn đặt hàng
 ```{r}
 by_order_df <- df %>% group_by(order_id) %>% 
   summarise(quantity = sum(quantity), order_date = order_date[1], total_price = sum(total_price), order_hour = order_hour[1], order_weekday = order_weekday[1], order_month = order_month[1]) %>% ungroup()
@@ -118,7 +135,12 @@ Trong năm 2015, cửa hàng có 21350 đơn đặt hàng, bán ra tổng 49574 
 ```{r}
 by_order_df %>% select(quantity, total_price) %>% summary()
 ```
-Giá trị đơn hàng nhỏ nhất là 9.75$, lớn nhất là 444.40$. Trung bình, một đơn đặt hàng trị giá 32.5$ và mua 2.322 chiếc bánh pizza.
+Giá trị đơn hàng nhỏ nhất là 9.75 USD, lớn nhất là 444.40 USD. Trung bình, một đơn đặt hàng trị giá 32.5 USD và mua 2.322 chiếc bánh pizza.
+```{r}
+by_order_df %>% ggplot(aes(x = total_price)) + geom_histogram(fill = "#FF9999") +
+  labs(title = "Phân bố của giá trị một đơn hàng", x = "Giá trị")
+```
+
 
 ## 6.2. Phân tích nhu cầu tiêu thụ pizza theo thời gian:
 
@@ -131,11 +153,12 @@ ggplot(data = df, aes(x = order_hour, y = quantity)) +
   theme(plot.title = element_text(hjust = 0.5)
   )
 ```
-Biểu đồ cho thấy sự phân bố số lượng đơn đặt hàng theo từng giờ trong ngày
 
-Giờ có lượng đơn hàng cao nhất là từ 12h đến 13h trưa. Thời gian từ 17h đến 18h cũng có lượng đơn hàng khá cao. Hai khoảng giờ cao điểm này có thể là các thời điểm mà người tiêu dùng có nhiều thời gian rảnh sau giờ làm việc cho bữa ăn trưa và ăn tối. Các khung giờ khác có số lượng đơn hàng giảm dần và thấp nhất là vào khoảng 9h,10h sáng và 23h khuya.
+* Biểu đồ cho thấy sự phân bố số lượng đơn đặt hàng theo từng giờ trong ngày.
 
-Dựa vào biểu đồ này, ta có thể quan sát rõ hành vi của người tiêu dùng. Giờ trưa và giờ tan làm có thể là lúc người tiêu dùng có thời gian và nhu cầu đặt thức ăn nhiều hơn. Điều này giúp nhà hàng lập kế hoạch hỗ trợ và chiến lược quảng cáo tốt hơn để thu hút và giữ chân khách hàng.
+* Giờ có lượng đơn hàng cao nhất là từ 12h đến 13h trưa. Thời gian từ 17h đến 18h cũng có lượng đơn hàng khá cao. Hai khoảng giờ cao điểm này có thể là các thời điểm mà người tiêu dùng có nhiều thời gian rảnh sau giờ làm việc cho bữa ăn trưa và ăn tối. Các khung giờ khác có số lượng đơn hàng giảm dần và thấp nhất là vào khoảng 9h,10h sáng và 23h khuya.
+
+> Dựa vào biểu đồ này, ta có thể quan sát rõ hành vi của người tiêu dùng. Giờ trưa và giờ tan làm có thể là lúc người tiêu dùng có thời gian và nhu cầu đặt thức ăn nhiều hơn. Điều này giúp nhà hàng lập kế hoạch hỗ trợ và chiến lược quảng cáo tốt hơn để thu hút và giữ chân khách hàng.
 
 ```{r}
 ggplot(data = df, aes(x = order_weekday, y = quantity)) +
@@ -145,8 +168,10 @@ ggplot(data = df, aes(x = order_weekday, y = quantity)) +
   theme(plot.title = element_text(hjust = 0.5)
   )
 ```
-- Thứ Sáu có nhu cầu cao nhất. Điều này cho thấy mọi người có xu hướng đặt pizza nhiều hơn khi cuối tuần đến gần. Còn lại các ngày khác trong tuần, từ Thứ Hai đến Thứ Năm, nhu cầu tương đối ổn định cho thấy sự tiêu thụ pizza đều đặn trong suốt các ngày làm việc.Nhu cầu thấp nhất vào Chủ Nhật, có khả năng cao khách hàng chuẩn bị cho tuần làm việc sắp tới.
-- Biểu đồ cho thấy nhu cầu tiêu thụ pizza tăng cao vào cuối tuần, đạt đỉnh vào Thứ Sáu, có thể do các buổi tụ họp xã hội hoặc xu hướng ăn uống ngoài khi bắt đầu cuối tuần. 
+
+* Thứ Sáu có nhu cầu cao nhất. Điều này cho thấy mọi người có xu hướng đặt pizza nhiều hơn khi cuối tuần đến gần. Còn lại các ngày khác trong tuần, từ Thứ Hai đến Thứ Năm, nhu cầu tương đối ổn định cho thấy sự tiêu thụ pizza đều đặn trong suốt các ngày làm việc.Nhu cầu thấp nhất vào Chủ Nhật, có khả năng cao khách hàng chuẩn bị cho tuần làm việc sắp tới.
+
+> Biểu đồ cho thấy nhu cầu tiêu thụ pizza tăng cao vào cuối tuần, đạt đỉnh vào Thứ Sáu, có thể do các buổi tụ họp xã hội hoặc xu hướng ăn uống ngoài khi bắt đầu cuối tuần. 
 
 ```{r}
 ggplot(data = df, aes(x = order_month, y = quantity)) +
@@ -156,10 +181,13 @@ ggplot(data = df, aes(x = order_month, y = quantity)) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1) ,
         plot.title = element_text(hjust = 0.5))  
 ```
-- Các tháng có nhu cầu cao nhất là Tháng Bảy và Tháng Mười Một, cho thấy những khoảng thời gian này có thể có các sự kiện đặc biệt hoặc kỳ nghỉ lễ khiến nhu cầu tăng lên.
-- Tháng Hai và Tháng Chín có nhu cầu tiêu thụ pizza thấp hơn so với các tháng khác, có thể do đây là khoảng thời gian sau các kỳ nghỉ lễ hoặc đầu mùa học tập và làm việc.
-- Nhìn chung, mức tiêu thụ pizza trong các tháng khá đồng đều, chỉ có sự chênh lệch nhẹ giữa các tháng. Điều này cho thấy pizza là món ăn được ưa chuộng quanh năm, bất kể mùa hay thời điểm.
-- Nhu cầu tiêu thụ pizza dường như ổn định trong suốt cả năm, với một số tháng có nhu cầu cao hơn, đặc biệt là vào mùa hè (Tháng Bảy) và vào mùa lễ (Tháng Mười Một). Sự tăng giảm nhẹ giữa các tháng có thể phản ánh sự thay đổi trong thói quen ăn uống của người tiêu dùng theo mùa và các dịp lễ.
+
+* Các tháng có nhu cầu cao nhất là Tháng Bảy và Tháng Mười Một, cho thấy những khoảng thời gian này có thể có các sự kiện đặc biệt hoặc kỳ nghỉ lễ khiến nhu cầu tăng lên.
+
+* Tháng Hai và Tháng Chín có nhu cầu tiêu thụ pizza thấp hơn so với các tháng khác, có thể do đây là khoảng thời gian sau các kỳ nghỉ lễ hoặc đầu mùa học tập và làm việc.
+
+> Nhìn chung, mức tiêu thụ pizza trong các tháng khá đồng đều, chỉ có sự chênh lệch nhẹ giữa các tháng. Điều này cho thấy pizza là món ăn được ưa chuộng quanh năm, bất kể mùa hay thời điểm.
+> Nhu cầu tiêu thụ pizza dường như ổn định trong suốt cả năm, với một số tháng có nhu cầu cao hơn, đặc biệt là vào mùa hè (Tháng Bảy) và vào mùa lễ (Tháng Mười Một). Sự tăng giảm nhẹ giữa các tháng có thể phản ánh sự thay đổi trong thói quen ăn uống của người tiêu dùng theo mùa và các dịp lễ.
 
 
 ```{r fig.width=10, fig.height=5}
@@ -171,11 +199,13 @@ ggplot(by_order_df, aes(x = order_month, fill = order_weekday)) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1) ,
         plot.title = element_text(hjust = 0.5)) 
 ```
-- Sự phổ biến vào cuối tuần: Trong hầu hết các tháng, Thứ Sáu và Thứ Bảy có xu hướng có tần suất đặt hàng cao hơn, cho thấy nhu cầu tiêu thụ pizza tăng vào cuối tuần, có thể do đây là thời điểm mọi người có thời gian rảnh rỗi hoặc tổ chức các buổi tụ họp.
-- Biến động theo tháng: Tháng Năm, Tháng Bảy, và Tháng Mười có một số ngày có tần suất cao hơn rõ rệt (đặc biệt vào các ngày cuối tuần), có thể do những tháng này có các sự kiện, kỳ nghỉ hoặc thời tiết thuận lợi cho các hoạt động ăn uống ngoài trời.
-- Nhu cầu ổn định giữa tuần: Nhu cầu tiêu thụ pizza vào các ngày giữa tuần (Thứ Hai đến Thứ Năm) ổn định hơn, với ít biến động giữa các tháng. Điều này cho thấy pizza vẫn được tiêu thụ đều đặn nhưng không quá cao vào những ngày đầu tuần và giữa tuần.
-- Chênh lệch theo ngày: Sự khác biệt về tần suất giữa các ngày trong tuần lớn nhất vào những tháng mùa hè và mùa thu, cho thấy nhu cầu có thể bị ảnh hưởng bởi mùa hoặc các kỳ nghỉ kéo dài.
-- Ta có thể kết luận rằng nhu cầu tiêu thụ pizza thay đổi theo cả tháng và ngày trong tuần, với xu hướng tiêu thụ cao vào các ngày bắt đầu cuối tuần và một số tháng cụ thể có kì nghỉ lễ hoặc thời tiết đẹp. Điều này có thể được sử dụng để dự đoán nhu cầu và tối ưu hóa nguồn cung cho các khoảng thời gian cao điểm trong năm.
+
+* Sự phổ biến vào cuối tuần: Trong hầu hết các tháng, Thứ Sáu và Thứ Bảy có xu hướng có tần suất đặt hàng cao hơn, cho thấy nhu cầu tiêu thụ pizza tăng vào cuối tuần, có thể do đây là thời điểm mọi người có thời gian rảnh rỗi hoặc tổ chức các buổi tụ họp.
+* Biến động theo tháng: Tháng Năm, Tháng Bảy, và Tháng Mười có một số ngày có tần suất cao hơn rõ rệt (đặc biệt vào các ngày cuối tuần), có thể do những tháng này có các sự kiện, kỳ nghỉ hoặc thời tiết thuận lợi cho các hoạt động ăn uống ngoài trời.
+* Nhu cầu ổn định giữa tuần: Nhu cầu tiêu thụ pizza vào các ngày giữa tuần (Thứ Hai đến Thứ Năm) ổn định hơn, với ít biến động giữa các tháng. Điều này cho thấy pizza vẫn được tiêu thụ đều đặn nhưng không quá cao vào những ngày đầu tuần và giữa tuần.
+* Chênh lệch theo ngày: Sự khác biệt về tần suất giữa các ngày trong tuần lớn nhất vào những tháng mùa hè và mùa thu, cho thấy nhu cầu có thể bị ảnh hưởng bởi mùa hoặc các kỳ nghỉ kéo dài.
+
+> Ta có thể kết luận rằng nhu cầu tiêu thụ pizza thay đổi theo cả tháng và ngày trong tuần, với xu hướng tiêu thụ cao vào các ngày bắt đầu cuối tuần và một số tháng cụ thể có kì nghỉ lễ hoặc thời tiết đẹp. Điều này có thể được sử dụng để dự đoán nhu cầu và tối ưu hóa nguồn cung cho các khoảng thời gian cao điểm trong năm.
 
 ```{r}
 ggplot(data = by_order_df, aes(x = order_weekday, y = order_hour, color = order_weekday)) +
@@ -187,8 +217,10 @@ ggplot(data = by_order_df, aes(x = order_weekday, y = order_hour, color = order_
     plot.title = element_text(hjust = 0.5)
   )
 ```
-- Các đơn đặt hàng tập trung chủ yếu vào khoảng từ trưa (11 giờ) đến tối (22 giờ), biểu hiện khoảng thời gian từ trưa đến tối là thời gian cao điểm cho nhu cầu tiêu thụ pizza, đặc biệt vào Thứ Sáu và Thứ Bảy. Ngoài khung giờ này là các điểm dữ liệu ngoài (outliers) cho các đơn hàng vào sáng sớm hoặc đêm muộn. Điều này cho thấy có một số ít đơn đặt hàng trong khoảng thời gian ngoài giờ cao điểm.
-- Có thể thấy ít có sự biến động giữa các ngày trong tuần và xu hướng chung là tiêu thụ pizza ổn định từ buổi trưa đến tối. Không có ngày nào có sự biến động lớn hoặc bất thường. Nhu cầu khá ổn định trong cả tuần nhưng có xu hướng cao hơn vào Thứ Sáu và Thứ Bảy
+
+* Các đơn đặt hàng tập trung chủ yếu vào khoảng từ trưa (11 giờ) đến tối (22 giờ), biểu hiện khoảng thời gian từ trưa đến tối là thời gian cao điểm cho nhu cầu tiêu thụ pizza, đặc biệt vào Thứ Sáu và Thứ Bảy. Ngoài khung giờ này là các điểm dữ liệu ngoài (outliers) cho các đơn hàng vào sáng sớm hoặc đêm muộn. Điều này cho thấy có một số ít đơn đặt hàng trong khoảng thời gian ngoài giờ cao điểm.
+
+> Có thể thấy ít có sự biến động giữa các ngày trong tuần và xu hướng chung là tiêu thụ pizza ổn định từ buổi trưa đến tối. Không có ngày nào có sự biến động lớn hoặc bất thường. Nhu cầu khá ổn định trong cả tuần nhưng có xu hướng cao hơn vào Thứ Sáu và Thứ Bảy
 
 ```{r, fig.width=10, fig.height=5}
 df_table <- table(by_order_df$order_hour, by_order_df$order_weekday)
@@ -209,18 +241,19 @@ ggplot(df_freq, aes(x = Hour, y = Frequency, fill = Day)) +
   theme(plot.margin = unit(c(1,1,1,1), "cm")) + 
   scale_x_discrete(expand = expansion(mult = c(0.1, 0.1))) 
 ```
-- Thời gian cao điểm: Các giờ cao điểm tiêu thụ pizza tập trung vào buổi trưa (11 giờ - 13 giờ) và buổi tối (17 giờ - 19 giờ). Đỉnh cao nhất của nhu cầu là vào khoảng 12 giờ trưa, với tần suất đặt hàng cao nhất vượt qua 900 đơn vào một số ngày trong tuần, đặc biệt vào các ngày Thứ Ba, Thứ Năm, và Thứ Sáu.
-- Sự khác biệt theo ngày trong tuần:
-Thứ Ba và Thứ Sáu: Có tần suất tiêu thụ pizza cao vào giờ trưa (11 giờ - 13 giờ) và buổi tối (17 giờ - 19 giờ).
-Thứ Bảy: Tần suất đặt hàng tăng cao vào buổi tối từ 17 giờ đến 19 giờ, có thể do đây là ngày cuối tuần.
-Chủ Nhật: Tần suất tiêu thụ pizza giảm vào buổi trưa nhưng vẫn có mức độ đặt hàng tương đối ổn định vào buổi tối.
-- Thời gian ít đơn đặt hàng: Trong các khoảng thời gian sáng sớm (trước 10 giờ) và đêm muộn (sau 21 giờ), tần suất tiêu thụ pizza khá thấp ở tất cả các ngày. Đặc biệt là từ 22 giờ đến 23 giờ, nhu cầu tiêu thụ pizza gần như không đáng kể.
 
-## 6.3. Phân tích thành phần nguyên liệu:
+* Thời gian cao điểm: Các giờ cao điểm tiêu thụ pizza tập trung vào buổi trưa (11 giờ - 13 giờ) và buổi tối (17 giờ - 19 giờ). Đỉnh cao nhất của nhu cầu là vào khoảng 12 giờ trưa, với tần suất đặt hàng cao nhất vượt qua 900 đơn vào một số ngày trong tuần, đặc biệt vào các ngày Thứ Ba, Thứ Năm, và Thứ Sáu.
 
-## 6.4. Phân tích và dự đoán doanh số (sales):
+* Sự khác biệt theo ngày trong tuần:
+  + Thứ Ba và Thứ Sáu: Có tần suất tiêu thụ pizza cao vào giờ trưa (11 giờ - 13 giờ) và buổi tối (17 giờ - 19 giờ).
+  + Thứ Bảy: Tần suất đặt hàng tăng cao vào buổi tối từ 17 giờ đến 19 giờ, có thể do đây là ngày cuối tuần.
+  + Chủ Nhật: Tần suất tiêu thụ pizza giảm vào buổi trưa nhưng vẫn có mức độ đặt hàng tương đối ổn định vào buổi tối.
+    
+* Thời gian ít đơn đặt hàng: Trong các khoảng thời gian sáng sớm (trước 10 giờ) và đêm muộn (sau 21 giờ), tần suất tiêu thụ pizza khá thấp ở tất cả các ngày. Đặc biệt là từ 22 giờ đến 23 giờ, nhu cầu tiêu thụ pizza gần như không đáng kể.
 
-### 6.4.1. Phân tích doanh số bán hàng của từng bánh pizza
+## 6.3. Phân tích doanh số:
+
+### 6.3.1. Phân tích doanh số bán hàng của từng bánh pizza
 
 * Nhóm dữ liệu theo tên pizza, kích cỡ, và đơn giá để tính doanh số
 
@@ -231,6 +264,7 @@ sales_by_pizza <- df %>%
 
 sprintf("Số bánh pizza cửa hàng kinh doanh: %s", length(sales_by_pizza$pizza_name))
 ```
+
 * Trực quan hóa doanh số của từng bánh pizza
 
 ```{r}
@@ -242,24 +276,65 @@ sales_by_pizza %>%
        y = "Pizza") +
   theme_minimal()
 ```
-+) Pizza bán chạy nhất là The Classic Deluxe Pizza với 2453 bánh.
-+) Pizza bán chậm nhất là The Brie Carre Pizza với 490 bánh. Ta có thể dễ dàng nhận thấy sự chênh lệch rất lớn giữa doanh số của nó với các bánh khác, trong đó, chỉ bằng khoảng 50% doanh số của pizza bán chậm thứ hai (The Mediterranean Pizza) và bằng khoảng 20% doanh số của bánh bán chạy nhất.
 
-* Xem các thuộc tính của hai bánh này để dự đoán nguyên nhân gây ra sự chênh lệch lớn 
+  + Pizza bán chạy nhất là The Classic Deluxe Pizza với 2453 bánh.
+  + Pizza bán chậm nhất là The Brie Carre Pizza với 490 bánh. Ta có thể dễ dàng nhận thấy sự chênh lệch rất lớn giữa doanh số của nó với các bánh khác, trong đó, chỉ bằng khoảng 50% doanh số của pizza bán chậm thứ hai (The Mediterranean Pizza) và bằng khoảng 20% doanh số của bánh bán chạy nhất.
+
+###### Xem các thuộc tính của ba bánh này để dự đoán nguyên nhân gây ra sự chênh lệch lớn 
 
 ```{r}
 df %>% select(pizza_name, pizza_size, unit_price, pizza_category, pizza_ingredients) %>% 
   group_by(pizza_name) %>% filter(pizza_name == 'The Classic Deluxe Pizza' | pizza_name == 'The Brie Carre Pizza' | pizza_name == 'The Mediterranean Pizza') %>% unique()
 ```
-Có thể nhận thấy sự chênh lệch rất lớn, gần gấp đôi trong giá của The Brie Carre Pizza size S (23.65 USD) và The Classic Deluxe Pizza hay The Mediterranean Pizza size S (12 USD). Do đó em cho rằng biến unit_price và pizza_size có ảnh hưởng tới doanh số, hơn thế nữa hai biến này là hai biến tương tác. Bên cạnh đó, sự khác biệt trong doanh số giữa The Classic Deluxe Pizza và The Mediterranean Pizza mặc dù chúng có mức giá gần như giống hệt nhau cho các kích cỡ. Điều này cho thấy pizza_category cũng ảnh hưởng tới doanh số. Biến pizza_ingredients sẽ trực tiếp phản ánh tới pizza_cateogry nên em bỏ qua nó.
-Ngoài ra, The Brie Carre Pizza chỉ có một kích cỡ trong khi đa số bánh còn lại có nhiều kích cỡ, em nghi ngờ độ đa dạng của một bánh pizza ảnh hưởng tới doanh số của nó. Trực quan hóa để kiểm tra:
+
+  + Có thể nhận thấy sự chênh lệch rất lớn, gần gấp đôi trong giá của The Brie Carre Pizza size S (23.65 USD) và The Classic Deluxe Pizza hay The Mediterranean Pizza size S (12 USD). Do đó em cho rằng *biến unit_price và pizza_size có ảnh hưởng tới doanh số, hơn thế nữa hai biến này là hai biến tương tác*. 
+
+  + Bên cạnh đó, sự khác biệt trong doanh số giữa The Classic Deluxe Pizza và The Mediterranean Pizza mặc dù chúng có mức giá gần như giống hệt nhau cho các kích cỡ. Điều này cho thấy *biến pizza_category cũng ảnh hưởng tới doanh số*. Biến pizza_ingredients sẽ trực tiếp phản ánh tới pizza_cateogry nên em bỏ qua nó.
+
+  + Ngoài ra, The Brie Carre Pizza chỉ có một kích cỡ trong khi đa số bánh còn lại có nhiều kích cỡ, em nghi ngờ độ đa dạng của một bánh pizza ảnh hưởng tới doanh số của nó. Trực quan hóa để kiểm tra:
 
 ```{r}
 df %>% select(pizza_name, pizza_size) %>% unique() %>% 
   group_by(pizza_name) %>% summarise(no_variants = n()) %>% 
   merge(sales_by_pizza) %>% ggplot(aes(x = no_variants, y = total_sales)) + geom_point()
 ```
-Không có mối quan hệ tương quan giữa no_variants và total_sales, nghĩa là độ đa dạng của một bánh pizza không ảnh hưởng tới doanh số của nó.
+
+* Không có mối quan hệ tương quan giữa no_variants và total_sales, nghĩa là độ đa dạng của một bánh pizza không ảnh hưởng tới doanh số của nó.
+
+```{r}
+sales_by_pizza_monthly <- df %>%
+  group_by(pizza_name, order_month) %>% 
+  summarise(total_sales = sum(quantity))
+
+ggplot(sales_by_pizza_monthly, aes(x = order_month, y = total_sales, color = pizza_name, group = pizza_name)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Doanh số của bánh pizza qua các tháng",
+       x = "Tháng",
+       y = "Doanh số ",
+       color = "Tên Pizza") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  guides(color = "none")
+```
+/
+Mỗi đường trên biểu đồ thể hiện sự biến động trong doanh số giữa các tháng của một pizza. Có nhiều bánh có sự biến động trong doanh số một khá đáng kể. 
+
+Kruskal-Wallis là một kiểm định phi tham số, có thể được sử dụng để so sánh sự biến thiên của doanh thu (sales) giữa các tháng (order_month) cho từng loại pizza.
+
+```{r}
+kruskal_test <- sales_by_pizza_monthly %>%
+  group_by(pizza_name) %>%
+  do({
+    kruskal_result <- kruskal.test(total_sales ~ order_month, data = .)
+    data.frame(pizza_name = unique(.$pizza_name), p_value = kruskal_result$p.value)
+  })
+
+# Kiểm tra kết quả p-value cho mỗi loại pizza
+print(kruskal_test)
+```
+
+Kết quả p-value khoảng 0.4 trong kiểm định Kruskal-Wallis có thể chỉ ra rằng không có sự khác biệt đáng kể trong doanh thu giữa các tháng đối với từng loại pizza, ít nhất là theo quan điểm thống kê. Điều này có thể xảy ra nếu doanh thu giữa các tháng tương đối ổn định.
 
 ### 6.4.2. Phân tích doanh số theo kích cỡ bánh
 
@@ -273,6 +348,7 @@ sales_by_size <- df %>%
 
 head(sales_by_size)
 ```
+
 * Trực quan hóa bảng số liệu trên bằng biểu đồ tròn
 ```{r}
 ggplot(sales_by_size, aes(x = "", y = total_sales, fill = pizza_size)) +
@@ -281,8 +357,9 @@ ggplot(sales_by_size, aes(x = "", y = total_sales, fill = pizza_size)) +
   labs(title = "Doanh thu theo kích cỡ pizza") +
   theme_void()
 ```
-+) Bánh pizza cỡ L bán chạy nhất với 18956 chiếc bánh chiếm 38% doanh số, theo sau là cỡ M với 15635 bánh (32%) và cỡ S với 14403 bánh (29%).
-+) Bánh size XL và XXL có doanh số rất thấp, cả hai chỉ chiếm chưa tới 2% tổng doanh số của năm 2015.
+
+  + Bánh pizza cỡ L bán chạy nhất với 18956 chiếc bánh chiếm 38% doanh số, theo sau là cỡ M với 15635 bánh (32%) và cỡ S với 14403 bánh (29%).
+  + Bánh size XL và XXL có doanh số rất thấp, cả hai chỉ chiếm chưa tới 2% tổng doanh số của năm 2015.
 
 ### 6.4.3. Phân tích doanh số theo danh mục bánh
 
@@ -308,31 +385,52 @@ ggplot(sales_by_category, aes(x = pizza_category, y = total_sales, fill = order_
        fill = "Tháng") +
   theme_minimal()
 ```
-Danh mục bánh Classic bánh chạy nhất với 14888 chiếc. Ba loại còn lại có sự chênh lệch không đáng kể với nhau, cụ thể Supreme là 11987, Veggie là 11649 và thấp nhất là Chicken với 11050 chiếc bánh.
-Đối với từng danh mục pizza, doanh số không có sự chênh lệch nào đáng kể giữa các tháng.
+
+  + Danh mục bánh Classic bánh chạy nhất với 14888 chiếc. Ba loại còn lại có sự chênh lệch không đáng kể với nhau, cụ thể Supreme là 11987, Veggie là 11649 và thấp nhất là Chicken với 11050 chiếc bánh.
+  + Đối với từng danh mục pizza, doanh số không có sự chênh lệch nào đáng kể giữa các tháng.
 
 ### 6.4.4. Dự đoán doanh số bằng mô hình hồi quy tuyến tính
 
-* Trực quan hóa mối quan hệ giữa doanh số và giá cùng với kích cỡ và danh mục bánh.
+* Tổng hợp dữ liệu để tính doanh số sản phẩm trong mỗi tháng
 
 ```{r}
 sales_data <- df %>%  group_by(unit_price, pizza_size, pizza_category, order_month) %>% summarise(sales = sum(quantity))
 
+dim(sales_data)
+summary(sales_data)
+```
+Dữ liệu gồm 435 quan sát với 5 thuộc tính. này là tập hợp các đơn hàng pizza, bao gồm thông tin về giá đơn vị, kích cỡ, loại pizza, tháng đặt hàng và doanh số bán ra. Biến unit_price biểu thị giá của từng loại pizza với phạm vi từ 9.75 đến 35.95, cho thấy sự đa dạng trong mức giá. Biến pizza_size phản ánh kích cỡ pizza với năm mức từ S đến XXL, trong đó kích cỡ phổ biến nhất là S, M, và L, còn kích cỡ XL và XXL ít được đặt hàng hơn.
+
+Biến pizza_category chỉ loại pizza, gồm bốn nhóm chính là Chicken, Classic, Supreme, và Veggie, với loại Classic chiếm tỷ lệ cao nhất trong các đơn hàng. Biến order_month ghi lại thời điểm đặt hàng theo tháng, cho thấy lượng đơn hàng tương đối đều qua các tháng. Cuối cùng, biến sales thể hiện doanh số bán ra, dao động từ 1 đến 444, với trung bình là 115.
+
+Nhìn chung, dữ liệu cho thấy sự đa dạng về giá cả, loại, và kích cỡ pizza, có thể ảnh hưởng đến doanh số bán hàng. Các yếu tố như loại pizza và giá đơn vị có thể đóng vai trò quan trọng trong việc xác định lượng tiêu thụ.
+
+  + Giá trị doanh số trung bình là 115, đây sẽ là cơ sở để đánh giá RMSE của mô hình có tốt không.
+
+* Trực quan hóa mối quan hệ giữa doanh số và giá cùng với kích cỡ và danh mục bánh.
+
+```{r}
 sales_data %>% 
   ggplot(aes(x = unit_price, y = sales, color = pizza_size, shape = pizza_category)) +
   geom_jitter()
 ```
-Biểu đồ cho thấy tác động của giá bán lên sales khác nhau đối với các cỡ bánh khác nhau và các loại bánh khác nhau. Cụ thể như bánh size S giá thấp (~10) có doanh số cao hơn rất nhiều so với bánh size S giá trên 20 USD. Và cùng ở khoảng giá 20 USD nhưng doanh số của các danh mục chênh lệch nhau rất rõ rệt. Vì vậy, ngoài 3 biến độc lập unit_price, pizza_size, pizza_category em sẽ thêm sự tác giữa các biến vào mô hình hồi quy tuyến tính.
+
+> Biểu đồ cho thấy tác động của giá bán lên sales khác nhau đối với các cỡ bánh khác nhau và các loại bánh khác nhau. Cụ thể như bánh size S giá thấp (~10) có doanh số cao hơn rất nhiều so với bánh size S giá trên 20 USD. Và cùng ở khoảng giá 20 USD nhưng doanh số của các danh mục chênh lệch nhau rất rõ rệt. Vì vậy, ngoài 3 biến độc lập unit_price, pizza_size, pizza_category em sẽ thêm sự tác giữa các biến vào mô hình hồi quy tuyến tính.
+
+* Xây dựng mô hình hồi quy tuyến tính dự đoán doanh số sản phẩm
 
 ```{r}
 lm_sales_model <- lm(sales ~ unit_price * (pizza_size + pizza_category), data = sales_data)
 summary(lm_sales_model)
 ```
-F-statistic bằng 38.31 với p-value < 2.2e-16, cho thấy rằng mô hình hồi quy này có ý nghĩa thống kê và ít nhất một trong các biến độc lập có ảnh hưởng đáng kể đến doanh số. Cụ thể về ý nghĩa thống kê của từng biến, ngoại trừ pizza_sizeXL pizza_sizeXXL và các biến tương tác liên quan thì các biến độc lập và biến tương tác khác đều có p-value nhỏ, chứng tỏ chúng có ý nghĩa thống kê. Việc các biến giả của cỡ XL và XXL không có ý nghĩa thống kê và hệ số của các biến tương tác liên quan bị thiếu là do có rất ít dữ liệu cho các pizza cỡ XL hay XXL.
-Multiple R-squared bằng 0.5443 và Adjusted R-squared bằng 0.5301 cho thấy mô hình giải thích khoảng 54% biến động của biến phụ thuộc. Mặc dù không quá cao, giá trị này vẫn cho thấy mô hình có thể giải thích một phần đáng kể sự biến động doanh số trong tập dữ liệu.
-Để dự đoán doanh số chính xác hơn, em sẽ sử dụng mô hình random forest.
 
-### 6.4.4. Dự đoán doanh số bằng Random Forest
+* F-statistic bằng 38.31 với p-value < 2.2e-16, cho thấy rằng **mô hình hồi quy này có ý nghĩa thống kê** và ít nhất một trong các biến độc lập có ảnh hưởng đáng kể đến doanh số. Cụ thể về ý nghĩa thống kê của từng biến, ngoại trừ pizza_sizeXL pizza_sizeXXL và các biến tương tác liên quan thì các biến độc lập và biến tương tác khác đều có p-value nhỏ, chứng tỏ chúng có ý nghĩa thống kê. Việc các biến giả của cỡ XL và XXL không có ý nghĩa thống kê và hệ số của các biến tương tác liên quan bị thiếu là do có rất ít dữ liệu cho các pizza cỡ XL hay XXL.
+
+* Multiple R-squared bằng 0.5443 và Adjusted R-squared bằng 0.5301 cho thấy **mô hình giải thích khoảng 54% biến động của biến phụ thuộc**. Mặc dù không quá cao, giá trị này vẫn cho thấy mô hình có thể giải thích một phần đáng kể sự biến động doanh số trong tập dữ liệu.
+
+* Để dự đoán doanh số chính xác hơn, em sẽ sử dụng mô hình random forest.
+
+### 6.4.5. Dự đoán doanh số bằng Random Forest
 
 Nguyên nhân dùng random forest cho bài toán dự đoán doanh thu này là vì khả năng xử lý các mối quan hệ phức tạp giữa các biến độc lập một cách tự động mà không cần ta phải chỉ định biến tương tác. Cụ thể cho bài toán này, random forest có thể tự động nhận diện nếu có sự tương tác giữa unit_price, pizza_size, pizza_category và phản ánh chúng trong quá trình xây dựng desicion tree.
 
@@ -351,29 +449,42 @@ rf_sales_model <- randomForest(sales ~ unit_price + pizza_size + pizza_category,
 
 rf_sales_model
 ```
-Mô hình giải thích được 76% sự biến động của sales. Đây là một tỷ lệ khá cao, cho thấy mô hình đã học tốt từ dữ liệu và có khả năng dự đoán khá chính xác.
+
+Thông tin về mô hình:
+  
+  + Đây là một mô hình random forest cho bài toán hồi quy, tức là nó dự đoán giá trị liên tục, trong bài toán này là doanh số của sản phẩm.
+  + Mô hình bao gồm 500 cây quyết định. Số cây càng lớn thì mô hình càng trở nên ổn định và chính xác hơn, nhưng cũng sẽ tốn thời gian huấn luyện và yêu cầu bộ nhớ cao hơn.
+  + Số biến được thử ở mỗi lẫn phân tách là 1, nghĩa là với mỗi lần phân chia trong các cây, thuật toán sẽ ngẫu nhiên chọn 1 biến (trong tổng số 3 biến: unit_price, pizza_size, và pizza_category) và tính điểm phân chia tốt nhất dựa trên chúng.
+  + Giá trị trung bình bình phương phần dư là 2400, cho thấy sai lệch trung bình giữa các giá trị dự đoán và giá trị thực tế của doanh số là khoảng 49 đơn vị.
+#  % Var explained: 97.4
+Đây là tỷ lệ phần trăm phương sai trong dữ liệu mà mô hình giải thích được. 97.4% có nghĩa là mô hình đã giải thích được 97.4% sự biến động của doanh số dựa trên các đặc trưng đầu vào.
+Điều này cho thấy mô hình khá chính xác và có khả năng dự đoán tốt.
 
 * Tối ưu hóa mô hình:
 
 Hiện tại, số cây quyết định của mô hình là 500 và số biến được thử tại mỗi lần phân tách là 1.
-- Kiểm tra ngưỡng cây tối ưu chưa:
+
+    - Kiểm tra ngưỡng cây tối ưu chưa:
 ```{r}
 plot(rf_sales_model)
 ```
-Biểu đồ cho thấy số cây này là phù hợp vì error tại 500 đã rất nhỏ và gần như không còn giảm nữa.
 
-- Sử dụng tuneRF để tìm tham số mtry tối ưu cho mô hình:
+> Biểu đồ cho thấy 500 cây là phù hợp vì error tại đây đã rất nhỏ và gần như không còn giảm nữa.
+
+    - Sử dụng tuneRF để tìm tham số mtry tối ưu cho mô hình:
 
 ```{r}
 tune_rf <- tuneRF(sales_data[, -which(names(sales_data) == "sales")], sales_data$sales)
 ```
-OOB Error rate là lỗi ngoài bộ dữ liệu huấn luyện, phản ánh độ chính xác của mô hình. Dự vào biểu đồ kết hợp với việc dữ liệu có 3 biến độc lập, mà chúng lại có tương tác phức tạp với nhau nên em chọn mtry = 2 để tối ưu mô hình.
+
+> OOB Error rate là lỗi ngoài bộ dữ liệu huấn luyện, phản ánh độ chính xác của mô hình. Dự vào biểu đồ kết hợp với việc dữ liệu có 3 biến độc lập, mà chúng lại có tương tác phức tạp với nhau nên em chọn mtry = 2 để tối ưu mô hình.
 
 ```{r}
 rf_sales_model <- randomForest(sales ~ unit_price + pizza_size + pizza_category, data = train_data, mtry = 2)
 
 rf_sales_model
 ```
+
 * Dự đoán doanh số trên tập dữ liệu kiểm tra
 
 ```{r}
@@ -393,22 +504,74 @@ r_squared <- 1 - (ss_residual / ss_total)
 cat("R-squared:", r_squared)
 ```
 
+* Tính toán lỗi RMSE (Root Mean Squared Error)
+
 ```{r}
-# Tính toán lỗi RMSE (Root Mean Squared Error)
 rmse <- sqrt(mean((predicted_sales - actual_values)^2))
 cat("RMSE", rmse)
 ```
 
 
-# Phần 7. Phân tích và dự đoán doanh thu:
+# Phần 7. Dự đoán doanh thu theo sản phẩm:
+
+* Tổng hợp dữ liệu để tính doanh số sản phẩm trong mỗi tháng
+
+```{r}
+sales_data <- df %>%  group_by(pizza_name, unit_price, pizza_size, pizza_category, order_month) %>% summarise(sales = sum(quantity))
+
+dim(sales_data)
+summary(sales_data)
+```
+Dữ liệu gồm 1091 quan sát, mỗi quan sát thể hiện doanh thu của một bánh với kích cỡ xác định (hoặc S hoặc M hoặc L hoặc XL hoặc XXL), đơn giá tương ứng, thuộc danh mục nào và doanh số trong một tháng nào đó là bao nhiêu. 
+
+Biến sales là biến phụ thuộc mà ta xây dựng mô hình để dự đoán, nó dao động từ 1 đến 444, với trung bình là 115, đây sẽ là cơ sở để đánh giá mô hình.
+
+* Trực quan hóa mối quan hệ giữa doanh số và giá cùng với kích cỡ và danh mục bánh.
+
+```{r}
+sales_data %>% 
+  ggplot(aes(x = unit_price, y = sales, shape = pizza_size, color = pizza_category)) +
+  geom_jitter()
+```
+
+> Biểu đồ cho thấy tác động của giá bán lên sales khác nhau đối với các cỡ bánh khác nhau và các loại bánh khác nhau. Cụ thể như bánh size S giá thấp (~10) có doanh số cao hơn rất nhiều so với bánh size S giá trên 20 USD. Và cùng ở khoảng giá 20 USD nhưng doanh số của các danh mục chênh lệch nhau rất rõ rệt. Vì vậy, ngoài 3 biến độc lập unit_price, pizza_size, pizza_category em sẽ thêm sự tác giữa các biến vào mô hình hồi quy tuyến tính.
+
+## 7.1. Kiểm định giả thuyết:
+
+**a) Kiểm định giá bán có ảnh hưởng tới doanh số không**
+
+**b) Kiểm định kích cỡ có ảnh hưởng tới doanh số không**
+
+**c) kiểm định 
+
+## 7.2. Dự đoán doanh thu theo sản phẩm bằng hồi quy tuyến tính
+
+```{r}
+lm_sales_model <- lm(sales ~ unit_price * (pizza_size + pizza_category), data = sales_data)
+summary(lm_sales_model)
+```
+
+## 7.3. Dự đoán doanh thu theo sản phẩm bằng random forest
+
+* Chia tập dữ liệu thành 80% cho huấn luyện và 20% cho kiểm tra.
+
+```{r}
+set.seed(123)  
+train_index <- sample(nrow(sales_data), 0.8 * nrow(sales_data))
+train_data <- sales_data[train_index, ]
+test_data <- sales_data[-train_index, ]
+```
+
+* Xây dựng mô hình dự đoán doanh số
+```{r}
+rf_sales_model <- randomForest(sales ~ unit_price + pizza_size + pizza_category, data = train_data)
+
+rf_sales_model
+```
+
 
 # Phần 8. Kết luận:
 
 # Phần 9. Phụ lục:
 
 # Phần 10. Đóng góp:
-
-
-
-
-
