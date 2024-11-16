@@ -37,6 +37,10 @@ library(broom)
   Cùng với những mục đích trên, trong nghiên cứu này, nhóm chúng em thực hiện phân tích tập dữ liệu bán hàng năm 2015 của một cửa hàng pizza và phát triển các mô hình dự đoán doanh số và doanh thu. Từ đó, có thể rút ra những nhận định hữu ích để hỗ trợ việc ra quyết định kinh doanh, tăng cường hiệu quả hoạt động và xây dựng các chiến lược marketing phù hợp.
 
 # Phần 3. Mục tiêu phân tích:
+  Trong bối cảnh kinh doanh ngành dịch vụ ẩm thực ngày càng cạnh tranh, việc hiểu rõ hành vi tiêu dùng và dự đoán nhu cầu của khách hàng đóng vai trò quan trọng trong việc đưa ra các chiến lược kinh doanh hiệu quả. Nghiên cứu này tập trung phân tích dữ liệu bán hàng pizza của một cửa hàng trong năm 2015, từ đó khám phá các yếu tố ảnh hưởng đến nhu cầu tiêu thụ và doanh thu.
+  Bằng cách áp dụng các phương pháp tiền xử lý dữ liệu, phân tích thống kê, mô hình hóa và trực quan hóa dữ liệu, nghiên cứu nhằm đạt được các mục tiêu:
+  
+  Phân tích và trực quan hóa nhu cầu tiêu thụ pizza theo thời gian, xác định rõ xu hướng tiêu thụ theo các giai đoạn cụ thể như mùa, tháng, tuần, ngày trong tuần và giờ trong ngày. Qua đó, nghiên cứu đánh giá sự khác biệt về doanh số dựa trên kích cỡ bánh, phân loại theo danh mục bánh, và xác định các loại pizza bán chạy nhất cũng như kém phổ biến nhất. Bằng cách xây dựng các mô hình dự đoán như hồi quy tuyến tính và Random Forest, nghiên cứu đạt được độ chính xác trên 80% trong việc dự đoán doanh số bán hàng theo từng loại sản phẩm và doanh thu của cửa hàng theo thời gian. Dựa trên kết quả phân tích hành vi tiêu dùng, nghiên cứu đề xuất các chiến lược kinh doanh như tập trung vào các thời điểm nhu cầu cao, tối ưu hóa danh mục sản phẩm, và điều chỉnh chương trình khuyến mãi phù hợp để tối đa hóa doanh thu và cải thiện lợi nhuận. Các kết quả thu được không chỉ cung cấp hiểu biết sâu sắc về hành vi khách hàng mà còn hỗ trợ xây dựng chiến lược kinh doanh hiệu quả và bền vững.
 
 # Phần 4. Thông tin về tập dữ liệu:
 
@@ -53,6 +57,7 @@ str(sales_df)
 Sao chép dữ liệu vào biến df để xử lý trên bản sao không gây ảnh hưởng đến dữ liệu gốc.
 ```{r}
 df <- sales_df
+
 ```
 
 ## 5.1. Kiểm tra giá trị thiếu (na) và trùng lặp (duplicate)
@@ -95,6 +100,7 @@ head(df)
 
 Thêm cột mới tên order_weekday có kiểu factor cho biết khách hàng đã đặt đơn vào thứ mấy.
 ```{r}
+Sys.setlocale("LC_ALL", "C")
 df <- mutate(df, order_weekday = weekdays(order_date))
 df$order_weekday <- factor(df$order_weekday, levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))
 
@@ -105,6 +111,7 @@ head(df)
 Thêm cột mới tên order_month có kiểu factor cho biết khách hàng đã đặt đơn vào tháng nào.
 
 ```{r}
+
 df <- mutate(df, order_month = format(order_date, "%B"))
 
 df$order_month <- factor(df$order_month, levels = c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"))
@@ -519,6 +526,49 @@ cat("RMSE", rmse)
 ## Kết luận
 
 # Phần 8. Dự đoán doanh thu theo thời gian:
+# 8.1. Phân tích doanh thu:
+
++ Phân tích tổng quan đã cho thấy trong năm 2015, cửa hàng có tổng doanh thu là 817.860 USD. Với giá trị đơn hàng nhỏ nhất là 9.75 USD, lớn nhất là 444.40 USD. Tổng giá trị của một đơn hàng bằng giá mỗi loại pizza*số lượng pizza đó trong một đơn hàng. Cột total_price ở dữ liệu ban đầu cho biết tổng giá của từng loại pizza trong một đơn hàng được đặt.
+
++ Phần dƯới đây, sẽ phân tích chi tiết hơn về doanh thu bán được của cửa hàng theo từng phân loại, bao gồm: kích cỡ bánh, danh mục bánh, doanh thu theo từng loại bánh pizza khác nhau.
+
+# 8.1.1. Phân tích doanh thu theo kích cỡ bánh:
+
+```{r}
+revenue_by_size <- df %>% 
+  group_by(pizza_size) %>% 
+  summarise(revenue = sum(total_price))
+
+print(revenue_by_size)
+```
++ Trực quan hóa bảng số liệu bằng biểu đồ cột để so sánh chênh lệch doanh thu giữa các khích cỡ pizza khác nhau:
+
+```{r}
+library(scales)
+ggplot(revenue_by_size, aes(x = pizza_size, y = revenue, fill = pizza_size)) +
+  geom_bar(stat = "identity", color = "black") +
+  theme_minimal() +
+  labs(
+    title = "Doanh thu theo kích cỡ pizza",
+    x = "Kích cỡ pizza",
+    y = "Doanh thu (USD)",
+    fill = "Kích cỡ pizza trong năm 2015"
+  ) +
+  scale_y_continuous(labels = scales::comma) +  
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10)
+  )
+# Phân tích thêm về số lượng trong mỗi đơn hàng. 
+```
+> Qua biểu đồ so sánh, ta thấy rằng pizza kích cỡ L có doanh thu cao nhất, đạt hơn 300.000 USD. Xếp sau đó là kích cỡ M với doanh thu hơn 200.000 USD, tiếp theo là kích cỡ S, M, XL và cuối cùng là kích cỡ XXL. Mặc dù pizza kích cỡ L có giá cao hơn so với hai kích cỡ M và S, nhưng lại bán được nhiều nhất và thu về doanh thu cao nhất trong năm. Điều này cho thấy giá cả của pizza kích cỡ L là hợp lý và được khách hàng ưu tiên chọn lựa.
+> Cửa hàng nên tiếp tục duy trì mức giá hợp lý cho pizza kích cỡ L để tối đa hóa doanh thu và lợi nhuận và đưa ra thêm chiến lược khuyến mãi, quảng cáo để thúc đẩy doanh thu cho các kích cỡ có doanh thu thấp hơn như XL và XXL.
+
 
 # Phần 9. Kết luận:
 
