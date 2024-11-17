@@ -26,6 +26,9 @@ library(arulesViz)
 library(car)
 library(randomForest)
 library(broom)
+library(wordcloud)
+library(tm)
+library(RColorBrewer)
 ```
 
 # Phần 1. Tóm tắt:
@@ -186,7 +189,7 @@ ggplot(data = df, aes(x = order_month, y = quantity)) +
 
 * Tháng Hai và Tháng Chín có nhu cầu tiêu thụ pizza thấp hơn so với các tháng khác, có thể do đây là khoảng thời gian sau các kỳ nghỉ lễ hoặc đầu mùa học tập và làm việc.
 
-> Nhìn chung, mức tiêu thụ pizza trong các tháng khá đồng đều, chỉ có sự chênh lệch nhẹ giữa các tháng. Điều này cho thấy pizza là món ăn được ưa chuộng quanh năm, bất kể mùa hay thời điểm.
+> Nhìn chung, mức tiêu thụ pizza trong các tháng khá đồng đều, chỉ có sự chênh lệch nhẹ giữa các tháng. Điều này cho thấy pizza của cửa hàng thu hút thực khách quanh năm.
 > Nhu cầu tiêu thụ pizza dường như ổn định trong suốt cả năm, với một số tháng có nhu cầu cao hơn, đặc biệt là vào mùa hè (Tháng Bảy) và vào mùa lễ (Tháng Mười Một). Sự tăng giảm nhẹ giữa các tháng có thể phản ánh sự thay đổi trong thói quen ăn uống của người tiêu dùng theo mùa và các dịp lễ.
 
 
@@ -207,20 +210,53 @@ ggplot(by_order_df, aes(x = order_month, fill = order_weekday)) +
 
 > Ta có thể kết luận rằng nhu cầu tiêu thụ pizza thay đổi theo cả tháng và ngày trong tuần, với xu hướng tiêu thụ cao vào các ngày bắt đầu cuối tuần và một số tháng cụ thể có kì nghỉ lễ hoặc thời tiết đẹp. Điều này có thể được sử dụng để dự đoán nhu cầu và tối ưu hóa nguồn cung cho các khoảng thời gian cao điểm trong năm.
 
+
+```{r, fig.height=6}
+by_order_df$order_hour <- as.numeric(by_order_df$order_hour)
+
+order_by_hour <- by_order_df %>%
+  group_by(order_weekday, order_hour) %>%
+  summarise(frequency = n(), .groups = "drop")
+
+ggplot(data = order_by_hour, aes(x = order_weekday, y = order_hour, size = frequency)) +
+  geom_point(color = "steelblue", alpha = 0.7) + 
+  scale_size(range = c(3, 15), name = "Frequency") + 
+  theme_minimal() +
+  labs(
+    x = "Day of the Week",
+    y = "Hour of the Day",
+    title = "Pizza Consumption Distribution by Hour and Day of the Week"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  scale_y_continuous(
+    breaks = seq(9, 23, by = 1), 
+    expand = expansion(mult = c(0.05, 0.05))
+  )
+
+```
+
+* Các đơn đặt hàng chủ yếu được đặt từ trưa (11 giờ) đến tối (22 giờ), biểu hiện khoảng thời gian từ trưa đến tối là thời gian cao điểm cho nhu cầu tiêu thụ pizza, đặc biệt vào Thứ Sáu và Thứ Bảy. Ngoài khung giờ này là các điểm dữ liệu ngoài (outliers) cho các đơn hàng vào sáng sớm hoặc đêm muộn. Điều này cho thấy có một số ít đơn đặt hàng trong khoảng thời gian ngoài giờ cao điểm.
+
+> Có thể thấy ít có sự biến động giữa các ngày trong tuần và xu hướng chung là tiêu thụ pizza ổn định từ buổi trưa đến tối. Không có ngày nào có sự biến động lớn hoặc bất thường. Nhu cầu khá ổn định trong cả tuần nhưng có xu hướng cao hơn vào Thứ Sáu và Thứ Bảy
+
 ```{r}
-ggplot(data = by_order_df, aes(x = order_weekday, y = order_hour, color = order_weekday)) +
-  geom_jitter(width = 0.2, height = 0) + # Tạo độ nhiễu ngang để các điểm không bị chồng lên nhau 
+ggplot(data = by_order_df, aes(x = order_weekday, y = order_hour, fill = order_weekday)) +
+  stat_boxplot(geom = "errorbar", width = 0.25) +
+  geom_boxplot(outlier.color = "red", outlier.shape = 16, outlier.size = 2) + 
   theme_minimal() +
   labs(x = "Order Dates", y = "Hour", title = "Pizza Consumption Demand by Hour of the Dates") +
   theme(
     legend.position = "none",
     plot.title = element_text(hjust = 0.5)
   )
+
 ```
-
-* Các đơn đặt hàng tập trung chủ yếu vào khoảng từ trưa (11 giờ) đến tối (22 giờ), biểu hiện khoảng thời gian từ trưa đến tối là thời gian cao điểm cho nhu cầu tiêu thụ pizza, đặc biệt vào Thứ Sáu và Thứ Bảy. Ngoài khung giờ này là các điểm dữ liệu ngoài (outliers) cho các đơn hàng vào sáng sớm hoặc đêm muộn. Điều này cho thấy có một số ít đơn đặt hàng trong khoảng thời gian ngoài giờ cao điểm.
-
-> Có thể thấy ít có sự biến động giữa các ngày trong tuần và xu hướng chung là tiêu thụ pizza ổn định từ buổi trưa đến tối. Không có ngày nào có sự biến động lớn hoặc bất thường. Nhu cầu khá ổn định trong cả tuần nhưng có xu hướng cao hơn vào Thứ Sáu và Thứ Bảy
+- Biểu đồ hộp (boxplot) thể hiện sự phân phối thời gian trong ngày mà pizza được tiêu thụ, được chia theo từng ngày trong tuần.
+- Phân phối phổ biến của thời gian đặt hàng là từ 13h đến 19h tối 
+- Thời gian trung bình đặt hàng các ngày trong tuần là 16h và các ngày cuối tuần(Friday, Saturday, Sunday) có median cao hơn là 17h. Điều này có thể phản ánh vào cuối tuần nhu cầu cao hơn vào buổi tối hoặc các khung giờ muộn. Đặc biệt là Friday, có độ rộng của box lớn nhất, hay mức độ phân tán rộng hơn các ngày khác thể hiện rằng khách hàng đặt pizza vào cả những khung giờ không phổ biến (ngoài giờ cao điểm)
 
 ```{r, fig.width=10, fig.height=5}
 df_table <- table(by_order_df$order_hour, by_order_df$order_weekday)
@@ -316,6 +352,7 @@ sales_by_pizza <- df %>%
   summarise(total_sales = sum(quantity))
 
 sprintf("Số bánh pizza cửa hàng kinh doanh: %s", length(sales_by_pizza$pizza_name))
+
 ```
 
 * Trực quan hóa doanh số của từng bánh pizza trong một năm
@@ -391,7 +428,69 @@ kruskal_test <- sales_by_pizza_monthly %>%
 print(kruskal_test)
 ```
 
-Kết quả p-value khoảng 0.4 trong kiểm định Kruskal-Wallis có thể chỉ ra rằng không có sự khác biệt đáng kể trong doanh thu giữa các tháng đối với mỗi pizza, chứng tỏ doanh thu giữa các tháng tương đối ổn định.
+Kết quả p-value khoảng 0.4 trong kiểm định Kruskal-Wallis có thể chỉ ra rằng không có sự khác biệt đáng kể trong doanh thu giữa các tháng đối với mỗi pizza, chứng tỏ doanh số giữa các tháng tương đối ổn định.
+
+## 6.4. Phân tích nguyên liệu:
+### 6.4.1. Phân tích tần suất xuất hiện các từ trong nguyên liệu làm pizza
+```{r}
+text <- paste(df$pizza_ingredients, collapse = " ")
+
+set.seed(1234) 
+wordcloud(words = text, 
+          scale = c(4, 0.5), 
+          max.words = 121, 
+          random.order = FALSE, 
+          colors = brewer.pal(8, "Spectral"), 
+          random.color = TRUE)
+```
+- Từ có tần suất lớn nhất là "cheese", một thành phần quan trọng và phổ biến nhất trong pizza. Bên cạnh đó còn có các từ như "garlic", "tomatoes", "peppers",..đây cũng là những nguyên liệu phổ biến. Điều này phù hợp với đặc trưng của món pizza.
+- Ngoài ra, một số nguyên liệu ít phổ biến với kích thước từ nhỏ và các loại phô mai đặc biệt (gouda, ricotta) có thể phù hợp với những khách hàng thích hương vị độc đáo nên tần suất rất ít
+
+
+### 6.4.2. Phân tích top 10 nguyên liệu sử dụng nhiều nhất trong pizza theo tháng
+```{r fig.width=10, fig.height=6}
+ingredient_list <- df %>%
+  mutate(ingredients = str_split(pizza_ingredients, ", ")) %>%
+  unnest(ingredients)
+
+ingredient_matrix <- ingredient_list %>%
+  count(order_month, ingredients) %>%
+  pivot_wider(names_from = ingredients, values_from = n, values_fill = 0)
+
+ingredient_trends <- ingredient_matrix %>%
+  pivot_longer(cols = -order_month, names_to = "ingredient", values_to = "count") %>%
+  group_by(order_month, ingredient) %>%
+  summarise(total_count = sum(count), .groups = "drop")
+
+top_ingredients <- ingredient_trends %>%
+  group_by(ingredient) %>%
+  summarise(total_count = sum(total_count)) %>%
+  top_n(10, total_count) %>%
+  pull(ingredient)
+
+filtered_trends <- ingredient_trends %>%
+  filter(ingredient %in% top_ingredients)
+
+ggplot(filtered_trends, aes(x = order_month, y = total_count, color = ingredient, group = ingredient)) +
+  geom_line() +
+  theme_minimal() +
+  labs(
+    title = "Top 10 Ingredients Trends Over Time",
+    x = "Month",
+    y = "Total Count",
+    color = "Ingredient"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+- Garlic là nguyên liệu chủ lực và phổ biến nhất trong công thức pizza, vượt trội hơn các thành phần khác về số lần sử dụng.
+Đây có thể do hương vị mạnh mẽ và phù hợp với nhiều loại pizza khác nhau.
+ Vị trí thứ hai của Tomatoes phản ánh tầm quan trọng của nguyên liệu này trong nước sốt pizza.
+ Xếp tiếp theo là Red Onion và Red Pepper
+ Mozzarella Cheese cũng có tần suất phổ biến.
+ Các nguyên liệu đứng đầu này có xu hướng biến động thấp nhất vào tháng Hai, tháng Mười, tăng mạnh vào mùa hè (tháng Bảy) và mùa đông (tháng Mười Một).
+ 
+>Nhà hàng có thể dựa vào phân tích để cân nhắc quản lý kho nguyên liệu phù hợp, đặc biệt là các thành phần phổ biến trong các món đặc trưng. Đồng thời, có thể thử nghiệm các loại pizza mới với các nguyên liệu ít phổ biến hơn để thu hút khách hàng thích trải nghiệm hương vị mới.
 
 # Phần 7. Dự đoán doanh số theo sản phẩm:
 
