@@ -30,23 +30,29 @@ library(scales)
 library(gridExtra)
 library(lubridate)
 library(tseries)
+library(forecast)
 ```
 
-# Phần 1. Tóm tắt:
+# Phần 1. Tóm tắt
 
-# Phần 2. Giới thiệu:
+# Phần 2. Giới thiệu
     
   Dữ liệu được ví như “dầu mỏ của thế kỷ 21” nhờ khả năng thúc đẩy sự đổi mới và cải tiến trong nhiều lĩnh vực. Giá trị của dữ liệu không chỉ nằm ở bản thân các con số, mà còn ở những thông tin có thể khai thác và ứng dụng từ dữ liệu. Đặc biệt trong ngành F&B, khi được thu thập, phân tích và diễn giải đúng cách, dữ liệu bán hàng và hành vi của người tiêu dùng trở thành nguồn tài nguyên chiến lược quan trọng giúp doanh nghiệp đưa ra những quyết định chính xác, giảm thiểu rủi ro và thúc đẩy tăng trưởng. Hơn nữa, phân tích dữ liệu bán hàng sẽ giúp tối ưu hóa hàng tồn kho của doanh nghiệp, giảm tình trạng dư thừa, cũng như có thể tăng số lượng các mặt hàng phổ biến để tránh tình trạng thiếu hàng (sold out) và tối đa hóa doanh số cho doanh nghiệp. 
   
   Cùng với những mục đích trên, trong nghiên cứu này, nhóm chúng em thực hiện phân tích tập dữ liệu bán hàng năm 2015 của một cửa hàng pizza và phát triển các mô hình dự đoán doanh số và doanh thu. Từ đó, có thể rút ra những nhận định hữu ích để hỗ trợ việc ra quyết định kinh doanh, tăng cường hiệu quả hoạt động và xây dựng các chiến lược marketing phù hợp.
 
-# Phần 3. Mục tiêu phân tích:
-  Trong bối cảnh kinh doanh ngành dịch vụ ẩm thực ngày càng cạnh tranh, việc hiểu rõ hành vi tiêu dùng và dự đoán nhu cầu của khách hàng đóng vai trò quan trọng trong việc đưa ra các chiến lược kinh doanh hiệu quả. Nghiên cứu này tập trung phân tích dữ liệu bán hàng pizza của một cửa hàng trong năm 2015, từ đó khám phá các yếu tố ảnh hưởng đến nhu cầu tiêu thụ và doanh thu.
-  Bằng cách áp dụng các phương pháp tiền xử lý dữ liệu, phân tích thống kê, mô hình hóa và trực quan hóa dữ liệu, nghiên cứu nhằm đạt được các mục tiêu:
+# Phần 3. Mục tiêu nghiên cứu
+  Để đạt được mục đích đã nêu trên, nhóm chúng em đặt ra các mục tiêu sau:
   
-  Phân tích và trực quan hóa nhu cầu tiêu thụ pizza theo thời gian, xác định rõ xu hướng tiêu thụ theo các giai đoạn cụ thể như mùa, tháng, tuần, ngày trong tuần và giờ trong ngày. Qua đó, nghiên cứu đánh giá sự khác biệt về doanh số dựa trên kích cỡ bánh, phân loại theo danh mục bánh, và xác định các loại pizza bán chạy nhất cũng như kém phổ biến nhất. Bằng cách xây dựng các mô hình dự đoán như hồi quy tuyến tính và Random Forest, nghiên cứu đạt được độ chính xác trên 80% trong việc dự đoán doanh số bán hàng theo từng loại sản phẩm và doanh thu của cửa hàng theo thời gian. Dựa trên kết quả phân tích hành vi tiêu dùng, nghiên cứu đề xuất các chiến lược kinh doanh như tập trung vào các thời điểm nhu cầu cao, tối ưu hóa danh mục sản phẩm, và điều chỉnh chương trình khuyến mãi phù hợp để tối đa hóa doanh thu và cải thiện lợi nhuận. Các kết quả thu được không chỉ cung cấp hiểu biết sâu sắc về hành vi khách hàng mà còn hỗ trợ xây dựng chiến lược kinh doanh hiệu quả và bền vững.
+  * Phân tích và trực quan hóa nhu cầu tiêu thụ pizza theo thời gian, xác định rõ xu hướng tiêu thụ theo các giai đoạn cụ thể như mùa, tháng, tuần, ngày trong tuần và giờ trong ngày.
+  
+  * Phân tích và trực quan hóa doanh số dựa trên kích cỡ bánh, danh mục bánh, và xác định các pizza bán chạy nhất cũng như kém phổ biến nhất.
+  
+  * Xây dựng mô hình dự đoán doanh số của sản phẩm có độ chính xác trên 80%.
+  
+  * Xây dựng mô hình dự đoán doanh thu của cửa hàng có độ chính xác trên 80%.
 
-# Phần 4. Thông tin về tập dữ liệu:
+# Phần 4. Thông tin về tập dữ liệu
 
 ```{r}
 sales_df <- read_excel("./data/Pizza Sales.xlsx")
@@ -56,7 +62,7 @@ head(sales_df)
 ```{r}
 str(sales_df)
 ```
-# Phần 5. Tiền xử lý dữ liệu:
+# Phần 5. Tiền xử lý dữ liệu
 
 Sao chép dữ liệu vào biến df để xử lý trên bản sao không gây ảnh hưởng đến dữ liệu gốc.
 ```{r}
@@ -64,7 +70,8 @@ df <- sales_df
 
 ```
 
-## 5.1. Kiểm tra giá trị thiếu (na) và trùng lặp (duplicate)
+#### Kiểm tra giá trị thiếu (na) và trùng lặp (duplicate)
+
 * Kiểm tra xem có tồn tại giá trị thiếu (na) ở các cột hay không
 ```{r}
 colSums(is.na(df))
@@ -77,7 +84,7 @@ any(duplicated(df))
 ```
 Không có quan sát nào bị trùng lặp
 
-## 5.2. Chuyển đổi cột pizza_size, pizza_category thành factor
+#### Chuyển đổi cột pizza_size, pizza_category thành factor
 
 Xem các giá trị duy nhất của cột pizza_size và pizza_category để xác định thành phần trong levels của factor
 ```{r}
@@ -90,7 +97,7 @@ df$pizza_size <- factor(df$pizza_size, levels = c("S", "M", "L", "XL", "XXL"))
 df$pizza_category <- factor(df$pizza_category)
 ```
 
-## 5.3. Tạo cột order_hour
+#### Tạo cột order_hour
 
 Dữ liệu của cột order_time là kiểu POSIXct, được lưu trữ dưới dạng số thực đơn vị giây tính từ ngày 1 tháng 1 năm 1970, 00:00:00 UTC, và hiển thị dưới dạng yyyy-mm-dd HH:mm:ss. Nhằm phục vụ mục đích phân tích, em sẽ dựa vào cột này để tạo cột order_hour thể hiện giờ đặt bánh của khách.
 ```{r}
@@ -100,7 +107,7 @@ df <- df %>% mutate(order_hour = sub("(..):..:..", "\\1", temp_time))
 head(df)
 ```
 
-## 5.4. Tạo cột order_weekday
+#### Tạo cột order_weekday
 
 Thêm cột mới tên order_weekday có kiểu factor cho biết khách hàng đã đặt đơn vào thứ mấy.
 ```{r}
@@ -111,7 +118,7 @@ df$order_weekday <- factor(df$order_weekday, levels = c("Monday", "Tuesday", "We
 head(df)
 ```
 
-## 5.5. Tạo cột order_month
+#### Tạo cột order_month
 Thêm cột mới tên order_month có kiểu factor cho biết khách hàng đã đặt đơn vào tháng nào.
 
 ```{r}
@@ -123,7 +130,7 @@ df$order_month <- factor(df$order_month, levels = c("January", "February", "Marc
 head(df)
 ```
 
-## 5.6. Tạo data frame chứa dữ liệu của từng đơn đặt hàng
+#### Tạo data frame chứa dữ liệu của từng đơn đặt hàng
 ```{r}
 by_order_df <- df %>% group_by(order_id) %>% 
   summarise(quantity = sum(quantity), order_date = order_date[1], total_price = sum(total_price), order_hour = order_hour[1], order_weekday = order_weekday[1], order_month = order_month[1]) %>% ungroup()
@@ -153,7 +160,7 @@ by_order_df %>% ggplot(aes(x = total_price)) + geom_histogram(fill = "#FF9999") 
 ```
 
 
-## 6.2. Phân tích nhu cầu tiêu thụ pizza theo thời gian:
+## 6.2. Phân tích nhu cầu tiêu thụ pizza theo thời gian
 
 Biểu đồ nhu cầu tiêu thụ pizza theo giờ
 ```{r}
@@ -404,6 +411,110 @@ print(kruskal_test)
 
 Kết quả p-value khoảng 0.4 trong kiểm định Kruskal-Wallis có thể chỉ ra rằng không có sự khác biệt đáng kể trong doanh số giữa các tháng đối với mỗi pizza, chứng tỏ doanh số giữa các tháng tương đối ổn định.
 
+## 6.4. Phân tích doanh thu theo thời gian:
+
+Phân tích tổng quan đã cho thấy trong năm 2015, cửa hàng có tổng doanh thu là 817,860 USD. Với giá trị đơn hàng nhỏ nhất là 9.75 USD, lớn nhất là 444.40 USD. Phần dưới đây, sẽ phân tích chi tiết hơn về doanh thu thu được của cửa hàng theo thời gian giờ trong ngày, tuần, và tháng trong năm 2015.
+
+### 6.4.1. Phân tích doanh thu theo giờ trong ngày của một tuần
+
+```{r}
+# Tính toán doanh thu theo giờ trong ngày của một tuần:
+revenue_by_hour_day <- df %>% 
+  group_by(order_hour, order_weekday) %>% 
+  summarise(revenue = sum(total_price))
+
+print(revenue_by_hour_day)
+```
+```{r}
+# Biểu đồ đường hiển thị doanh thu theo giờ trong ngày của một tuần:
+ggplot(revenue_by_hour_day, aes(x = order_hour, y = revenue, fill=order_weekday, color=order_weekday, group = order_weekday)) +
+  geom_line()+
+  geom_point(size = 2) +
+  facet_wrap(~order_weekday, nrow = 7, scales = "free_y")+
+  theme_minimal() +
+  labs(
+    title = "Doanh thu theo giờ trong ngày",
+    x = "Giờ trong ngày",
+    y = "Doanh thu (USD)",
+  ) +
+  scale_y_continuous(labels = scales::comma)
+```
+
+Biểu đồ cho thấy doanh thu đều chạm đỉnh vào 12h các ngày trong tuần, trừ Thứ 7 và Chủ Nhật. Điều này cho thấy doanh thu sẽ cao vào giờ nghỉ trưa của những ngày đi làm của khách hàng. Ngày Thứ 7 và Chủ Nhật, doanh thu sẽ cao hơn vào thời điểm sau 17h đến 20h. Điều này có thể do khách hàng có xu hướng ăn tối muộn hơn vào cuối tuần. Bên cạnh đó, có sự chênh lệch doanh thu đáng kể vào các thời điểm trong ngày. 
+
+> Cửa hàng có thể triển khai các chương trình khuyến mãi vào các khung giờ thấp điểm để thu hút thêm khách hàng và tăng doanh thu.
+
+> Cần phân tích chi tiết hơn về các yếu tố gây sự chênh lệch doanh thu giữa các giờ.
+
+### 6.4.2. Phân tích doanh thu một ngày dùng Time Series
+
+* Sao chép dữ liệu vào biến df_ts để xử lý trên bản sao không gây ảnh hưởng đến dữ liệu gốc.
+
+```{r}
+df_ts <- df
+```
+
+* Chuyển đổi cột order_date thành kiểu Date
+
+```{r}
+df_ts$order_date <- as.Date(df_ts$order_date, format = "%Y-%m-%d")
+```
+
+* Tính toán doanh thu theo ngày của một năm:  
+
+```{r}
+revenue_by_date <- df_ts %>% 
+  group_by(order_date) %>% 
+  summarise(revenue = sum(total_price))
+revenue_by_date
+```
+
+* Tạo chuỗi thời gian (time series) với tần suất 365 ngày (Năm 2015 không phải năm nhuận)
+
+```{r}
+revenue_ts_date<-ts(revenue_by_date$revenue, start = c(2015, 1), frequency = 365)
+# Kiểm tra chuỗi thời gian
+print(revenue_ts_date)
+```
+
+* Trực quan hóa doanh thu theo ngày với time_series do có nhiều điểm dữ liệu:
+
+```{r}
+plot(revenue_ts_date, main = "Revenue of Pizza Over 12 months", xlab = "Time", ylab = "Revenue (USD)", col = "red", lwd = 2)
+```
+
+> Xu hướng tổng thể: Có sự biến động trong doanh thu theo ngày trong năm 2015 của cửa hàng. Có những ngày doanh thu cao hơn và những ngày doanh thu thấp hơn.
+> Doanh thu có sự biến động đáng kể hàng ngày, điều này có thể do nhiều yếu tố như ngày trong tuần, ngày lễ, hoặc các sự kiện đặc biệt. Xu hướng biến động: giảm vào đầu tháng và tăng vào cuối tháng. Doanh thu biến động ít hơn vào những ngày đầu năm. 
+> Doanh thu tăng cao bất thường vào những ngày của tháng 5, tháng 7 và khoảng tháng 8. 
+
+### 6.4.3. Phân tích doanh thu theo tháng
+
+```{r}
+revenue_by_month <- df %>% 
+  group_by(order_month) %>% 
+  summarise(revenue = sum(total_price))
+revenue_by_month
+```
+
+* Trực quan hóa bằng biểu đồ cột để so sánh doanh thu giữa các tháng trong năm: 
+
+```{r}
+ggplot(revenue_by_month, aes(x = order_month, y = revenue, group = 1, fill = order_month)) +
+  geom_bar(stat = "identity") +
+  geom_line(aes(group = 1), color = "red", size = 1) +
+  geom_point(color = "red", size = 2) +
+  theme_minimal() +
+  labs(
+    title = "Doanh thu theo tháng",
+    x = "Tháng",
+    y = "Doanh thu (USD)"
+  ) +
+  scale_y_continuous(labels = scales::comma)
+```
+
+> Trong năm 2015, doanh thu cao nhất được ghi nhận vào tháng 7 với hơn 70.000 USD. Các tháng có nhu cầu cao nhất là Tháng Bảy và Tháng Mười Một, nhưng Tháng Mười Một lại có doanh thu thấp hơn so với Tháng Năm. Điều này cho thấy rằng dù có nhu cầu tiêu thụ cao vào tháng này, nhưng doanh thu không tương ứng, có thể do các chương trình khuyến mãi hoặc giá bán không phù hợp. 
+> Biểu đồ đường cho thấy doanh thu giữa các tháng về cơ bản không có sự chênh lệch lớn, doanh thu ổn định ở mức trên 60.000 USD mỗi tháng. Điều này cho thấy cửa hàng duy trì được sự ổn định trong doanh thu hàng tháng, tuy nhiên, cần có các chiến lược cụ thể để tối ưu hóa doanh thu trong các tháng có nhu cầu cao.
+
 # Phần 7. Dự đoán doanh số theo sản phẩm:
 
 Mục tiêu của phần này là xây dựng mô hình dự đoán doanh số trong một tháng của một bánh pizza cụ thể, tức là dự đoán xem cửa hàng bán được bao nhiêu bánh pizza đó bằng các đặc trưng của nó cùng với dữ liệu bán hàng trong quá khứ.
@@ -420,7 +531,7 @@ Dữ liệu gồm 1091 quan sát, mỗi quan sát thể hiện doanh số của 
 
 Biến sales là biến phụ thuộc mà ta xây dựng mô hình để dự đoán, dao động từ 1 đến 444, với trung bình là 115, đây sẽ là cơ sở để đánh giá mô hình.
 
-Các biến độc lập bao gồm: pizza_name, unit_price, pizza_size và pizza_category. Như đã kiểm định ở trên doanh số giữa các tháng của một bánh pizza tương đối ổn định, nên không chọn order_month làm biến độc lập.
+Các biến độc lập bao gồm: pizza_name, unit_price, pizza_size và pizza_category. Như đã kiểm định khi phân tích doanh số của từng pizza (6.3.3), doanh số giữa các tháng của một bánh pizza tương đối ổn định, nên không chọn order_month làm biến độc lập.
 
 * Trực quan hóa mối quan hệ giữa doanh số và giá cùng với kích cỡ và danh mục bánh.
 
@@ -439,6 +550,10 @@ lm_sales_model <- lm(sales ~ pizza_name + unit_price * (pizza_size + pizza_categ
 summary(lm_sales_model)
 ```
 
+> F-statistic bằng 55.94 với p-value < 2.2e-16, cho thấy rằng mô hình hồi quy này có ý nghĩa thống kê. Cụ thể về ý nghĩa thống kê của từng biến, các biến giả của pizza_category bị thiếu giá trị, nhưng các biến tương tác của nó với unit_price có p-value rất thấp, chứng tỏ đưa sự tương tác này vào mô hình là hợp lý. Một số biến dummy của pizza_name, pizza_size có p-value lớn hơn 0.05 nhưng đa số có p-value nhỏ, chứng tỏ các biến độc lập này có ý nghĩa thống kê.
+
+> Multiple R-squared bằng 0.6862 và Adjusted R-squared bằng 0.6739 cho thấy mô hình giải thích khoảng 67% sự biến động của doanh số trong tập dữ liệu. Mặc dù không quá cao, giá trị này vẫn cho thấy mô hình có thể giải thích một phần đáng kể sự biến động doanh số trong tập dữ liệu.
+
 ## 7.2. Dự đoán doanh số theo sản phẩm bằng random forest
 
 * Chia tập dữ liệu thành 80% cho huấn luyện và 20% cho kiểm tra.
@@ -451,6 +566,9 @@ test_data <- sales_data[-train_index, ]
 ```
 
 * Xây dựng mô hình dự đoán doanh số
+
+Trong công thức của mô hình này, em không chỉ định cụ thể sự tương tác giữa các biến độc lập như trong mô hình hồi quy tuyến tính vì random forest có khả năng tự học và nắm bắt các tương tác phức tạp giữa các biến.
+
 ```{r}
 rf_sales_model <- randomForest(sales ~ pizza_name + unit_price + pizza_size + pizza_category, data = train_data)
 
@@ -462,10 +580,10 @@ Thông tin về mô hình:
   + Đây là một mô hình random forest cho bài toán hồi quy, tức là nó dự đoán giá trị liên tục, trong bài toán này là doanh số của sản phẩm.
   + Mô hình bao gồm 500 cây quyết định. Số cây càng lớn thì mô hình càng trở nên ổn định và chính xác hơn, nhưng cũng sẽ tốn thời gian huấn luyện và yêu cầu bộ nhớ cao hơn.
   + Số biến được thử ở mỗi lẫn phân tách là 1, nghĩa là với mỗi lần phân chia trong các cây, thuật toán sẽ ngẫu nhiên chọn 1 biến (trong tổng số 3 biến: unit_price, pizza_size, và pizza_category) và tính điểm phân chia tốt nhất dựa trên chúng.
-  + Giá trị trung bình bình phương phần dư là 231.1445, cho thấy sai lệch trung bình giữa các giá trị dự đoán và giá trị thực tế của doanh số là khoảng 15 đơn vị, bằng 13% giá trị trung bình của sales.
+  + Từ giá trị trung bình bình phương phần dư (Mean of squared residuals), ta có sai lệch trung bình giữa các giá trị dự đoán và giá trị thực tế của doanh số là khoảng 15 đơn vị (RMSE), bằng 13% giá trị trung bình của sales.
   + Mô hình đã giải thích được 69% sự biến động của doanh số dựa trên các đặc trưng đầu vào.
 
-> Mô hình này khá đáng tin cậy (RMSE không quá cao) nhưng khả năng dự đoán vẫn còn khá thấp (69%).
+> Mô hình này khá đáng tin cậy (RMSE không quá cao) nhưng khả năng dự đoán vẫn còn khá thấp.
 
 * Tối ưu hóa mô hình:
 
@@ -502,6 +620,7 @@ predicted_sales <- predict(rf_sales_model, newdata = test_data)
 
 head(predicted_sales)
 ```
+
 * Kiểm tra độ chính xác
 
 ```{r}
@@ -511,189 +630,90 @@ actual_values <- test_data$sales
 ss_total <- sum((actual_values - mean(actual_values))^2)
 ss_residual <- sum((actual_values - predicted_sales)^2)
 r_squared <- 1 - (ss_residual / ss_total)
-cat("R-squared:", r_squared)
+cat("R-squared: ", r_squared)
 ```
 
-  + Mô hình đã giải thích được 90% sự biến thiên của sales trong tập dữ liệu kiểm tra.
+\
+Mô hình đã giải thích được 90% sự biến thiên của sales trong tập dữ liệu kiểm tra.
 
 * Tính toán lỗi RMSE (Root Mean Squared Error)
 
 ```{r}
 rmse <- sqrt(mean((predicted_sales - actual_values)^2))
-cat("RMSE", rmse)
+cat("RMSE: ", rmse)
 ```
 
-  + Trung bình, giá trị doanh số dự đoán và giá trị thực tế của nó chênh lệch nhau khoảng 9 đơn vị, bằng khoảng 8% giá trị trung bình của sales.
+\
+Trung bình, giá trị doanh số dự đoán và giá trị thực tế của nó chênh lệch nhau khoảng 9 đơn vị, bằng khoảng 8% giá trị trung bình của sales.
 
-> Mô hình có R-squared cao khoảng 90% trên cả tập dữ liệu huấn luyện và tập kiểm tra, nên có thể kết luận rằng mô hình không bị overfitting và đạt hiệu quả dự đoán rất tốt. Bên cạnh đó, RMSE nhỏ cho thấy đây là mô hình rất đáng tin cậy để dự đoán doanh số.
+> Mô hình có R-squared cao khoảng 90% trên cả tập dữ liệu huấn luyện và tập kiểm tra, nên có thể kết luận rằng mô hình không bị overfitting và đạt hiệu quả dự đoán rất tốt. Bên cạnh đó, sai số dự đoán (RMSE) nhỏ cho thấy đây là mô hình rất đáng tin cậy để dự đoán doanh số.
 
 ## Kết luận
 
-# Phần 8. Dự đoán doanh thu theo thời gian:
+Mô hình random forest sau khi được tối ưu đã dự đoán doanh số của sản phẩm tốt hơn rất nhiều so với mô hình hồi quy tuyến tính vì nó có khả năng nắm bắt các mối quan hệ phi tuyến tính và tương tác phức tạp giữa các biến độc lập pizza_name, unit_price, pizza_size, pizza_category mà mô hình hồi quy tuyến tính chưa mô tả được. Mô hình random forest còn có khả năng xử lý hiệu quả biến phân loại nhiều mức một cách tự nhiên khi xây dựng các cây quyết định, trong khi đó mô hình hồi quy tuyến tính sẽ dùng kỹ thuật one hot encoding để tạo biến giả, tăng độ phức tạp của mô hình và có thể gây ra vấn đề đa cộng tuyến. Bên cạnh đó, nó ít bị ảnh hưởng bởi giá trị ngoại lai (outliers) nhờ lấy trung bình của nhiều cây quyết định. Hơn nữa, random forest không yêu cầu các giả định phân phối nghiêm ngặt, phù hợp với tính chất dữ liệu trong bài toán này.
 
-+ Trước khu đưa ra những dự đoán về doanh thu theo thời gian, chúng ta cần phân tích tổng quan về doanh thu theo thời gian. 
+# Phần 8. Dự đoán doanh thu trong 6 tháng tiếp theo bằng mô hình ARIMA: 
 
-# 8.1. Phân tích doanh thu theo thời gian:
+Mục tiêu của mô hình là dự báo doanh thu theo ngày của chuỗi doanh thu theo ngày(revenue_ts_date) từ dữ liệu được khai thác trong giai đoạn từ 01/01/2015 đến 20/12/2015 theo phương pháp ARIMA. 
 
-+ Phân tích tổng quan đã cho thấy trong năm 2015, cửa hàng có tổng doanh thu là 817.860 USD. Với giá trị đơn hàng nhỏ nhất là 9.75 USD, lớn nhất là 444.40 USD. Tổng giá trị của một đơn hàng bằng giá mỗi loại pizza*số lượng pizza đó trong một đơn hàng. Cột total_price ở dữ liệu ban đầu cho biết tổng giá của từng loại pizza trong một đơn hàng được đặt.
-
-+ Phần dƯới đây, sẽ phân tích chi tiết hơn về doanh thu bán được của cửa hàng theo thời gian giờ trong ngày, tuần, và tháng trong năm 2015.
-
-# 8.1.1. Phân tích doanh thu theo giờ trong ngày của một tuần:
-
-```{r}
-# Tính toán doanh thu theo giờ trong ngày của một tuần:
-revenue_by_hour_day <- df %>% 
-  group_by(order_hour, order_weekday) %>% 
-  summarise(revenue = sum(total_price))
-
-print(revenue_by_hour_day)
-```
-```{r}
-# Biểu đồ đường hiển thị doanh thu theo giờ trong ngày của một tuần:
-ggplot(revenue_by_hour_day, aes(x = order_hour, y = revenue, fill=order_weekday, color=order_weekday, group = order_weekday)) +
-  geom_line()+
-  geom_point(size = 2) +
-  facet_wrap(~order_weekday, nrow = 7, scales = "free_y")+
-  theme_minimal() +
-  labs(
-    title = "Doanh thu theo giờ trong ngày",
-    x = "Giờ trong ngày",
-    y = "Doanh thu (USD)",
-  ) +
-  scale_y_continuous(labels = scales::comma)
-```
-> Biểu đồ cho thấy doanh thu đều chạm đỉnh vào 12h các ngày trong tuần, trừ Thứ 7 và Chủ Nhật. Điều này cho thấy doanh thu sẽ cao vào giờ nghỉ trưa của những ngày đi làm của khách hàng. Ngày Thứ 7 và Chủ Nhật, doanh thu sẽ cao hơn vào thời điểm sau 17h đến 20h. Điều này có thể do khách hàng có xu hướng ăn tối muộn hơn vào cuối tuần.
-> Có sự chênh lệch doanh thu đáng kể vào các thời điểm trong ngày. 
-
-> Cửa hàng có thể triển khai các chương trình khuyến mãi vào các khung giờ thấp điểm để thu hút thêm khách hàng và tăng doanh thu.
-
-> Cần phân tích chi tiết hơn về các yếu tố gây sự chênh lệch doanh thu giữa các giờ.
-
-# 8.1.2. Phân tích doanh thu một ngày dùng Time Series:
-
-+ Sao chép dữ liệu vào biến df_ts để xử lý trên bản sao không gây ảnh hưởng đến dữ liệu gốc.
-
-```{r}
-df_ts <- df
-```
-
-+ Chuyển đổi cột order_date thành kiểu Date
-
-```{r}
-df_ts$order_date <- as.Date(df_ts$order_date, format = "%Y-%m-%d")
-```
-
-+ Tính toán doanh thu theo ngày của một năm:  
-
-```{r}
-revenue_by_date <- df_ts %>% 
-  group_by(order_date) %>% 
-  summarise(revenue = sum(total_price))
-revenue_by_date
-```
-+ Tạo chuỗi thời gian (time series) với tần suất 365 ngày (Năm 2015 không phải năm nhuận)
-
-```{r}
-revenue_ts_date<-ts(revenue_by_date$revenue, start = c(2015, 1), frequency = 365)
-# Kiểm tra chuỗi thời gian
-print(revenue_ts_date)
-```
-+ Trực quan hóa doanh thu theo ngày với time_series do có nhiều điểm dữ liệu:
-
-```{r}
-plot(revenue_ts_date, main = "Revenue of Pizza Over 12 months", xlab = "Time", ylab = "Revenue (USD)", col = "red", lwd = 2)
-```
-> Xu hướng tổng thể: Có sự biến động trong doanh thu theo ngày trong năm 2015 của cửa hàng. Có những ngày doanh thu cao hơn và những ngày doanh thu thấp hơn.
-> Doanh thu có sự biến động đáng kể hàng ngày, điều này có thể do nhiều yếu tố như ngày trong tuần, ngày lễ, hoặc các sự kiện đặc biệt. Xu hướng biến động: giảm vào đầu tháng và tăng vào cuối tháng. Doanh thu biến động ít hơn vào những ngày đầu năm. 
-> Doanh thu tăng cao bất thường vào những ngày của tháng 5, tháng 7 và khoảng tháng 8. 
-
-# 8.1.3. Phân tích doanh thu theo tháng:
-
-```{r}
-revenue_by_month <- df %>% 
-  group_by(order_month) %>% 
-  summarise(revenue = sum(total_price))
-revenue_by_month
-```
-
-+ Trực quan hóa bằng biểu đồ cột để so sánh doanh thu giữa các tháng trong năm: 
-
-```{r}
-ggplot(revenue_by_month, aes(x = order_month, y = revenue, group = 1, fill = order_month)) +
-  geom_bar(stat = "identity") +
-  geom_line(aes(group = 1), color = "red", size = 1) +
-  geom_point(color = "red", size = 2) +
-  theme_minimal() +
-  labs(
-    title = "Doanh thu theo tháng",
-    x = "Tháng",
-    y = "Doanh thu (USD)"
-  ) +
-  scale_y_continuous(labels = scales::comma)
-```
-> Trong năm 2015, doanh thu cao nhất được ghi nhận vào tháng 7 với hơn 70.000 USD. Các tháng có nhu cầu cao nhất là Tháng Bảy và Tháng Mười Một, nhưng Tháng Mười Một lại có doanh thu thấp hơn so với Tháng Năm. Điều này cho thấy rằng dù có nhu cầu tiêu thụ cao vào tháng này, nhưng doanh thu không tương ứng, có thể do các chương trình khuyến mãi hoặc giá bán không phù hợp. 
-> Biểu đồ đường cho thấy doanh thu giữa các tháng về cơ bản không có sự chênh lệch lớn, doanh thu ổn định ở mức trên 60.000 USD mỗi tháng. Điều này cho thấy cửa hàng duy trì được sự ổn định trong doanh thu hàng tháng, tuy nhiên, cần có các chiến lược cụ thể để tối ưu hóa doanh thu trong các tháng có nhu cầu cao.
-
-# 8.2. Dự đoán doanh thu trong 6 tháng tiếp theo bằng mô hình ARIMA: 
-
-+ Mục tiêu của mô hình là dự báo doanh thu theo ngày của chuỗi doanh thu theo ngày(revenue_ts_date) từ dữ liệu được khai thác trong giai đoạn từ 01/01/2015 đến 20/12/2015 theo phương pháp ARIMA. 
-
-+ Tạo chuỗi doanh thu theo ngày:
-
-```{r}
-revenue_ts_date<-ts(revenue_by_date$revenue, start = c(2015, 1), frequency = 365)
-# Kiểm tra chuỗi thời gian
-print(revenue_ts_date)
-
-```
-+ Đầu tiên cần phải lựa chọn tham số phù hợp cho mô hình ARIMA (p,d,q)
-* p: Số bậc của phần tự hồi quy (Auto-Regressive). Nó đại diện cho số lượng các giá trị trước đó của chuỗi thời gian được sử dụng để dự đoán giá trị hiện tại.
-* d: Bậc sai phân cần thực hiện để chuỗi thời gian trở nên dừng (stationary). Chuỗi thời gian được gọi là dừng nếu giá trị kỳ vọng và phương sai của nó không thay đổi theo thời gian. Sai phân giúp loại bỏ xu hướng (trend) trong dữ liệu. Nếu dữ liệu đã dừng, d=0.
-* q: Số bậc của phần trung bình trượt (Moving Average).Nó đại diện cho số các nhiễu (error terms) trong quá khứ được sử dụng để dự đoán giá trị hiện tại.
+* Đầu tiên cần phải lựa chọn tham số phù hợp cho mô hình ARIMA (p,d,q)
+ 
+  + p: Số bậc của phần tự hồi quy (Auto-Regressive). Nó đại diện cho số lượng các giá trị trước đó của chuỗi thời gian được sử dụng để dự đoán giá trị hiện tại.
+  + d: Bậc sai phân cần thực hiện để chuỗi thời gian trở nên dừng (stationary). Chuỗi thời gian được gọi là dừng nếu giá trị kỳ vọng và phương sai của nó không thay đổi theo thời gian. Sai phân giúp loại bỏ xu hướng (trend) trong dữ liệu. Nếu dữ liệu đã dừng, d=0.
+  + q: Số bậc của phần trung bình trượt (Moving Average).Nó đại diện cho số các nhiễu (error terms) trong quá khứ được sử dụng để dự đoán giá trị hiện tại.
 
 * Xác định p, q dựa vào ACF (Auto-Correlation Function) và PACF (Partial Auto-Correlation Function):
+\
   q: Số lượng độ trễ có ý nghĩa trong ACF.
+  
 * Xác định hệ số tự tương quan (AFC) thông qua biểu đồ AFC: 
 ```{r}
 # Vẽ biểu đồ ACF cho chuỗi thời gian revenue_ts_date
 acf(revenue_ts_date, main = "Biểu đồ ACF của doanh thu theo thời gian")
 ```
-> Trục hoành là độ trễ, trục tung là giá trị của hệ số tự tương quan tương ứng với độ trễ. Dãi màu xanh là khoảng tin cậy 95% để giá trị hệ số tự tương quan bằng 0. Nếu tại một độ trễ nhỏ nhất mà đoạn thẳng (vuông góc với trục hoành) mà độ dài đại diện cho giá trị của hệ số tự tương quan nằm ngoài khoảng tin cậy thì đó chính là độ trễ phù hợp lớn nhất mà ta nên lựa chọn cho quá trình trung bình trượt MV(q). Bậc q không nên quá lớn. 
 
+\
+Trục hoành là độ trễ, trục tung là giá trị của hệ số tự tương quan tương ứng với độ trễ. Dãi màu xanh là khoảng tin cậy 95% để giá trị hệ số tự tương quan bằng 0. Nếu tại một độ trễ nhỏ nhất mà đoạn thẳng (vuông góc với trục hoành) mà độ dài đại diện cho giá trị của hệ số tự tương quan nằm ngoài khoảng tin cậy thì đó chính là độ trễ phù hợp lớn nhất mà ta nên lựa chọn cho quá trình trung bình trượt MV(q). Bậc q không nên quá lớn. 
+\
  p: Số lượng độ trễ (lags) có ý nghĩa trong PACF.
+
 * Xác định q thông qua biểu đồ PACF: 
 ```{r}
 pacf(revenue_by_date, main = "Biểu đồ PACF của doanh thu theo thời gian")
 ```
 
-> Tương tự như ACF, thông qua một biểu đồ PACF về giá trị các hệ số tương quan riêng phần tương ứng với các độ trễ khác nhau, chúng ta sẽ tìm ra được các bậc tự do phù hợp. Đó chính là vị trí mà giá trị của hệ số tương quan riêng phần nằm ngoài ngưỡng tin cậy 95% của giả thuyết hệ số tương quan riêng phần bằng 0.
+\
+Tương tự như ACF, thông qua một biểu đồ PACF về giá trị các hệ số tương quan riêng phần tương ứng với các độ trễ khác nhau, chúng ta sẽ tìm ra được các bậc tự do phù hợp. Đó chính là vị trí mà giá trị của hệ số tương quan riêng phần nằm ngoài ngưỡng tin cậy 95% của giả thuyết hệ số tương quan riêng phần bằng 0.
 
-+ Một chuỗi thời gian dừng có các đặc tính thống kê như trung bình và phương sai không thay đổi theo thời gian, điều này rất quan trọng cho việc xây dựng các mô hình dự báo như ARIMA. Kiểm tra tính dừng bằng ADF test:
+* Một chuỗi thời gian dừng có các đặc tính thống kê như trung bình và phương sai không thay đổi theo thời gian, điều này rất quan trọng cho việc xây dựng các mô hình dự báo như ARIMA. Kiểm tra tính dừng bằng ADF test:
 
 ```{r}
 adf_test <- adf.test(revenue_ts_date)
 print(adf_test)
 ```
+
 > Giá trị p-value < 0.05, chúng ta bác bỏ giả thuyết 0 rằng chuỗi thời gian không dừng. Nghĩa là chấp nhận giả thuyết chuỗi thời gian dừng. 
 > Chuỗi thời gian dừng nên lấy d = 0
 
-+ Tự động chọn tham số ARIMA (p,d,q):
+* Tự động chọn tham số ARIMA (p,d,q):
 
 ```{r}
 auto_model <- auto.arima(revenue_ts_date)
 summary(auto_model)
 ```
+
 > Tham số được chọn là ARIMA (2,0,2). Giá trị của AIC càng nhỏ thì mô hình càng phù hợp. ACF1 gần 0 cho thấy phần dư không có tự tương quan đáng kể, điều này là tốt vì nó cho thấy mô hình đã nắm bắt được cấu trúc của chuỗi thời gian.
 
-+ Để kiểm tra sự phù hợp của mô hình ARIMA, có thể kiểm tra các giá trị residuals (phần dư) để đảm bảo rằng mô hình không có vấn đề với giả thuyết chuỗi thời gian.
+* Để kiểm tra sự phù hợp của mô hình ARIMA, có thể kiểm tra các giá trị residuals (phần dư) để đảm bảo rằng mô hình không có vấn đề với giả thuyết chuỗi thời gian.
+
 ```{r}
 # Kiểm tra phần dư của mô hình ARIMA
 checkresiduals(auto_model)
 ```
+
 > Phân phối phần dư dường như hơi lệch với đuôi dài, đặc biệt có một số phần dư cực lớn. Điều này cho thấy phân phối của phần dư không hoàn toàn tuân theo chuẩn. Các giá trị tự tương quan của phần dư không nằm hoàn toàn trong giới hạn tin cậy (đường chấm xanh), đặc biệt ở một số độ trễ (lags).
 
-+ Kiểm tra lại với các mô hình ARIMA khác nhau: 
+* Kiểm tra lại với các mô hình ARIMA khác nhau: 
 
 ```{r}
 # ARIMA(1,0,1)
@@ -712,11 +732,12 @@ summary(model_111)
 model_212 <- arima(revenue_ts_date, order = c(0, 0, 5))
 summary(model_212)
 ```
+
 > Mô hình ARIMA (2,0,2) vẫn tốt hơn. 
 
-+ Sau khi đã tìm ra được mô hình ARIMA tốt nhất. Chúng ta sẽ dự báo cho khoảng thời gian tiếp theo.
+* Sau khi đã tìm ra được mô hình ARIMA tốt nhất. Chúng ta sẽ dự báo cho khoảng thời gian tiếp theo.
 
-+ Dự đoán doanh thu trong 6 tháng (180 ngày) tiếp theo. Do điểm dữ liệu doanh thu theo tháng quá ít để xây dựng mô hình, nên sẽ dự đoán theo ngày, với số ngày là 180 ngày.    
+* Dự đoán doanh thu trong 6 tháng (180 ngày) tiếp theo. Do điểm dữ liệu doanh thu theo tháng quá ít để xây dựng mô hình, nên sẽ dự đoán theo ngày, với số ngày là 180 ngày.    
 
 ```{r}
 forecast_values <- forecast(auto_model, h = 180)
@@ -726,15 +747,19 @@ print(forecast_values)
 
 ```{r}
 plot(forecast_values, main = "Dự đoán doanh thu 6 tháng tiếp theo", xlab = "Thời gian", ylab = "Doanh thu")
-lines(revenue_ts, col = "blue", lwd = 2)
+lines(revenue_ts_date, col = "blue", lwd = 2)
 ```
-> 1. Xu hướng dự báo: Doanh thu pizza trong 6 tháng dự báo có xu hướng ổn định, không tăng hoặc giảm mạnh theo thời gian. Điều này thể hiện qua đường trung bình (màu xanh), dao động quanh một mức giá trị cố định, không có sự thay đổi đáng kể về xu hướng. 
-2. Biến động của dữ liệu: Trong dữ liệu lịch sử (2015-2016), doanh thu pizza có những giai đoạn dao động lớn và xuất hiện các đỉnh cao đột ngột. Tuy nhiên, dự báo không phản ánh các biến động lớn đó, mà chỉ nhắm đến mức trung bình chung, làm giảm khả năng dự đoán các đột biến doanh thu (nếu có).
-3. Nhận xét về độ tin cậy: Với khoảng tin cậy khá rộng, đặc biệt ở cuối giai đoạn dự báo, điều này có thể ám chỉ rằng mô hình gặp khó khăn trong việc nắm bắt toàn bộ đặc điểm của dữ liệu, đặc biệt là những biến động bất thường trong lịch sử.
-Do đó, dự đoán này nên được sử dụng thận trọng, đặc biệt trong việc ra quyết định dài hạn.
-4. Ổn định: Nếu xu hướng trung bình tiếp tục, doanh nghiệp có thể dự đoán doanh thu tương đối ổn định mà không cần phải đối mặt với biến động lớn trong ngắn hạn nhưng cũng có rủi ro tiềm ẩn: Các sự kiện bất thường (như khuyến mãi, nhu cầu mùa cao điểm) có thể không được phản ánh đầy đủ trong mô hình. Điều này cần được cân nhắc khi lập kế hoạch kinh doanh.
 
-# 8.3. Dự đoán doanh thu trong 6 tháng tới bằng Random Forest:
+**Nhận xét:**
+
+1. Xu hướng dự báo: Doanh thu pizza trong 6 tháng dự báo có xu hướng ổn định, không tăng hoặc giảm mạnh theo thời gian. Điều này thể hiện qua đường trung bình (màu xanh), dao động quanh một mức giá trị cố định, không có sự thay đổi đáng kể về xu hướng. 
+
+2. Biến động của dữ liệu: Trong dữ liệu lịch sử (2015-2016), doanh thu pizza có những giai đoạn dao động lớn và xuất hiện các đỉnh cao đột ngột. Tuy nhiên, dự báo không phản ánh các biến động lớn đó, mà chỉ nhắm đến mức trung bình chung, làm giảm khả năng dự đoán các đột biến doanh thu (nếu có).
+
+3. Về độ tin cậy: Với khoảng tin cậy khá rộng, đặc biệt ở cuối giai đoạn dự báo, điều này có thể ám chỉ rằng mô hình gặp khó khăn trong việc nắm bắt toàn bộ đặc điểm của dữ liệu, đặc biệt là những biến động bất thường trong lịch sử.
+Do đó, dự đoán này nên được sử dụng thận trọng, đặc biệt trong việc ra quyết định dài hạn.
+
+4. Ổn định: Nếu xu hướng trung bình tiếp tục, doanh nghiệp có thể dự đoán doanh thu tương đối ổn định mà không cần phải đối mặt với biến động lớn trong ngắn hạn nhưng cũng có rủi ro tiềm ẩn: Các sự kiện bất thường (như khuyến mãi, nhu cầu mùa cao điểm) có thể không được phản ánh đầy đủ trong mô hình. Điều này cần được cân nhắc khi lập kế hoạch kinh doanh.
 
 # Phần 9. Kết luận:
 
