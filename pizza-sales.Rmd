@@ -33,21 +33,26 @@ library(tseries)
 library(forecast)
 ```
 
-# Phần 1. Tóm tắt:
+# Phần 1. Tóm tắt
 
-# Phần 2. Giới thiệu:
+# Phần 2. Giới thiệu
     
   Dữ liệu được ví như “dầu mỏ của thế kỷ 21” nhờ khả năng thúc đẩy sự đổi mới và cải tiến trong nhiều lĩnh vực. Giá trị của dữ liệu không chỉ nằm ở bản thân các con số, mà còn ở những thông tin có thể khai thác và ứng dụng từ dữ liệu. Đặc biệt trong ngành F&B, khi được thu thập, phân tích và diễn giải đúng cách, dữ liệu bán hàng và hành vi của người tiêu dùng trở thành nguồn tài nguyên chiến lược quan trọng giúp doanh nghiệp đưa ra những quyết định chính xác, giảm thiểu rủi ro và thúc đẩy tăng trưởng. Hơn nữa, phân tích dữ liệu bán hàng sẽ giúp tối ưu hóa hàng tồn kho của doanh nghiệp, giảm tình trạng dư thừa, cũng như có thể tăng số lượng các mặt hàng phổ biến để tránh tình trạng thiếu hàng (sold out) và tối đa hóa doanh số cho doanh nghiệp. 
   
   Cùng với những mục đích trên, trong nghiên cứu này, nhóm chúng em thực hiện phân tích tập dữ liệu bán hàng năm 2015 của một cửa hàng pizza và phát triển các mô hình dự đoán doanh số và doanh thu. Từ đó, có thể rút ra những nhận định hữu ích để hỗ trợ việc ra quyết định kinh doanh, tăng cường hiệu quả hoạt động và xây dựng các chiến lược marketing phù hợp.
 
-# Phần 3. Mục tiêu phân tích:
-  Trong bối cảnh kinh doanh ngành dịch vụ ẩm thực ngày càng cạnh tranh, việc hiểu rõ hành vi tiêu dùng và dự đoán nhu cầu của khách hàng đóng vai trò quan trọng trong việc đưa ra các chiến lược kinh doanh hiệu quả. Nghiên cứu này tập trung phân tích dữ liệu bán hàng pizza của một cửa hàng trong năm 2015, từ đó khám phá các yếu tố ảnh hưởng đến nhu cầu tiêu thụ và doanh thu.
-  Bằng cách áp dụng các phương pháp tiền xử lý dữ liệu, phân tích thống kê, mô hình hóa và trực quan hóa dữ liệu, nghiên cứu nhằm đạt được các mục tiêu:
+# Phần 3. Mục tiêu nghiên cứu
+  Để đạt được mục đích đã nêu trên, nhóm chúng em đặt ra các mục tiêu sau:
   
-  Phân tích và trực quan hóa nhu cầu tiêu thụ pizza theo thời gian, xác định rõ xu hướng tiêu thụ theo các giai đoạn cụ thể như mùa, tháng, tuần, ngày trong tuần và giờ trong ngày. Qua đó, nghiên cứu đánh giá sự khác biệt về doanh số dựa trên kích cỡ bánh, phân loại theo danh mục bánh, và xác định các loại pizza bán chạy nhất cũng như kém phổ biến nhất. Bằng cách xây dựng các mô hình dự đoán như hồi quy tuyến tính và Random Forest, nghiên cứu đạt được độ chính xác trên 80% trong việc dự đoán doanh số bán hàng theo từng loại sản phẩm và doanh thu của cửa hàng theo thời gian. Dựa trên kết quả phân tích hành vi tiêu dùng, nghiên cứu đề xuất các chiến lược kinh doanh như tập trung vào các thời điểm nhu cầu cao, tối ưu hóa danh mục sản phẩm, và điều chỉnh chương trình khuyến mãi phù hợp để tối đa hóa doanh thu và cải thiện lợi nhuận. Các kết quả thu được không chỉ cung cấp hiểu biết sâu sắc về hành vi khách hàng mà còn hỗ trợ xây dựng chiến lược kinh doanh hiệu quả và bền vững.
+  * Phân tích và trực quan hóa nhu cầu tiêu thụ pizza theo thời gian, xác định rõ xu hướng tiêu thụ theo các giai đoạn cụ thể như mùa, tháng, tuần, ngày trong tuần và giờ trong ngày.
+  
+  * Phân tích và trực quan hóa doanh số dựa trên kích cỡ bánh, danh mục bánh, và xác định các pizza bán chạy nhất cũng như kém phổ biến nhất.
+  
+  * Xây dựng mô hình dự đoán doanh số của sản phẩm có độ chính xác trên 80%.
+  
+  * Xây dựng mô hình dự đoán doanh thu của cửa hàng có độ chính xác trên 80%.
 
-# Phần 4. Thông tin về tập dữ liệu:
+# Phần 4. Thông tin về tập dữ liệu
 
 ```{r}
 sales_df <- read_excel("./data/Pizza Sales.xlsx")
@@ -57,7 +62,7 @@ head(sales_df)
 ```{r}
 str(sales_df)
 ```
-# Phần 5. Tiền xử lý dữ liệu:
+# Phần 5. Tiền xử lý dữ liệu
 
 Sao chép dữ liệu vào biến df để xử lý trên bản sao không gây ảnh hưởng đến dữ liệu gốc.
 ```{r}
@@ -65,7 +70,8 @@ df <- sales_df
 
 ```
 
-## 5.1. Kiểm tra giá trị thiếu (na) và trùng lặp (duplicate)
+#### Kiểm tra giá trị thiếu (na) và trùng lặp (duplicate)
+
 * Kiểm tra xem có tồn tại giá trị thiếu (na) ở các cột hay không
 ```{r}
 colSums(is.na(df))
@@ -78,7 +84,7 @@ any(duplicated(df))
 ```
 Không có quan sát nào bị trùng lặp
 
-## 5.2. Chuyển đổi cột pizza_size, pizza_category thành factor
+#### Chuyển đổi cột pizza_size, pizza_category thành factor
 
 Xem các giá trị duy nhất của cột pizza_size và pizza_category để xác định thành phần trong levels của factor
 ```{r}
@@ -91,7 +97,7 @@ df$pizza_size <- factor(df$pizza_size, levels = c("S", "M", "L", "XL", "XXL"))
 df$pizza_category <- factor(df$pizza_category)
 ```
 
-## 5.3. Tạo cột order_hour
+#### Tạo cột order_hour
 
 Dữ liệu của cột order_time là kiểu POSIXct, được lưu trữ dưới dạng số thực đơn vị giây tính từ ngày 1 tháng 1 năm 1970, 00:00:00 UTC, và hiển thị dưới dạng yyyy-mm-dd HH:mm:ss. Nhằm phục vụ mục đích phân tích, em sẽ dựa vào cột này để tạo cột order_hour thể hiện giờ đặt bánh của khách.
 ```{r}
@@ -101,7 +107,7 @@ df <- df %>% mutate(order_hour = sub("(..):..:..", "\\1", temp_time))
 head(df)
 ```
 
-## 5.4. Tạo cột order_weekday
+#### Tạo cột order_weekday
 
 Thêm cột mới tên order_weekday có kiểu factor cho biết khách hàng đã đặt đơn vào thứ mấy.
 ```{r}
@@ -112,7 +118,7 @@ df$order_weekday <- factor(df$order_weekday, levels = c("Monday", "Tuesday", "We
 head(df)
 ```
 
-## 5.5. Tạo cột order_month
+#### Tạo cột order_month
 Thêm cột mới tên order_month có kiểu factor cho biết khách hàng đã đặt đơn vào tháng nào.
 
 ```{r}
@@ -124,7 +130,7 @@ df$order_month <- factor(df$order_month, levels = c("January", "February", "Marc
 head(df)
 ```
 
-## 5.6. Tạo data frame chứa dữ liệu của từng đơn đặt hàng
+#### Tạo data frame chứa dữ liệu của từng đơn đặt hàng
 ```{r}
 by_order_df <- df %>% group_by(order_id) %>% 
   summarise(quantity = sum(quantity), order_date = order_date[1], total_price = sum(total_price), order_hour = order_hour[1], order_weekday = order_weekday[1], order_month = order_month[1]) %>% ungroup()
@@ -154,7 +160,7 @@ by_order_df %>% ggplot(aes(x = total_price)) + geom_histogram(fill = "#FF9999") 
 ```
 
 
-## 6.2. Phân tích nhu cầu tiêu thụ pizza theo thời gian:
+## 6.2. Phân tích nhu cầu tiêu thụ pizza theo thời gian
 
 Biểu đồ nhu cầu tiêu thụ pizza theo giờ
 ```{r}
@@ -405,140 +411,11 @@ print(kruskal_test)
 
 Kết quả p-value khoảng 0.4 trong kiểm định Kruskal-Wallis có thể chỉ ra rằng không có sự khác biệt đáng kể trong doanh số giữa các tháng đối với mỗi pizza, chứng tỏ doanh số giữa các tháng tương đối ổn định.
 
-# Phần 7. Dự đoán doanh số theo sản phẩm:
-
-Mục tiêu của phần này là xây dựng mô hình dự đoán doanh số trong một tháng của một bánh pizza cụ thể, tức là dự đoán xem cửa hàng bán được bao nhiêu bánh pizza đó bằng các đặc trưng của nó cùng với dữ liệu bán hàng trong quá khứ.
-
-* Tổng hợp dữ liệu chứa doanh số mỗi tháng của từng bánh pizza
-
-```{r}
-sales_data <- df %>%  group_by(pizza_name, unit_price, pizza_size, pizza_category, order_month) %>% summarise(sales = sum(quantity))
-
-dim(sales_data)
-summary(sales_data)
-```
-Dữ liệu gồm 1091 quan sát, mỗi quan sát thể hiện doanh số của một bánh với kích cỡ xác định (hoặc S hoặc M hoặc L hoặc XL hoặc XXL), đơn giá tương ứng, thuộc danh mục nào và doanh số trong một tháng cụ thể là bao nhiêu. 
-
-Biến sales là biến phụ thuộc mà ta xây dựng mô hình để dự đoán, dao động từ 1 đến 444, với trung bình là 115, đây sẽ là cơ sở để đánh giá mô hình.
-
-Các biến độc lập bao gồm: pizza_name, unit_price, pizza_size và pizza_category. Như đã kiểm định ở trên doanh số giữa các tháng của một bánh pizza tương đối ổn định, nên không chọn order_month làm biến độc lập.
-
-* Trực quan hóa mối quan hệ giữa doanh số và giá cùng với kích cỡ và danh mục bánh.
-
-```{r}
-sales_data %>% 
-  ggplot(aes(x = unit_price, y = sales, shape = pizza_size, color = pizza_category)) +
-  geom_jitter()
-```
-
-> Biểu đồ cho thấy tác động của giá bán lên sales khác nhau đối với các cỡ bánh khác nhau và các loại bánh khác nhau. Cụ thể như bánh size S giá thấp (~10) có doanh số cao hơn rất nhiều so với bánh size S giá trên 20 USD. Và cùng ở khoảng giá 20 USD nhưng doanh số của các danh mục chênh lệch nhau rất rõ rệt. Vì vậy, ngoài 4 biến độc lập đã nêu thì em sẽ thêm sự tác giữa unit_price và pizza_size, giữa unit_price và pizza_category vào mô hình dự đoán.
-
-## 7.1. Dự đoán doanh số của sản phẩm bằng hồi quy tuyến tính
-
-```{r}
-lm_sales_model <- lm(sales ~ pizza_name + unit_price * (pizza_size + pizza_category), data = sales_data)
-summary(lm_sales_model)
-```
-
-## 7.2. Dự đoán doanh số theo sản phẩm bằng random forest
-
-* Chia tập dữ liệu thành 80% cho huấn luyện và 20% cho kiểm tra.
-
-```{r}
-set.seed(123)  
-train_index <- sample(nrow(sales_data), 0.8 * nrow(sales_data))
-train_data <- sales_data[train_index, ]
-test_data <- sales_data[-train_index, ]
-```
-
-* Xây dựng mô hình dự đoán doanh số
-```{r}
-rf_sales_model <- randomForest(sales ~ pizza_name + unit_price + pizza_size + pizza_category, data = train_data)
-
-rf_sales_model
-```
-
-Thông tin về mô hình:
-  
-  + Đây là một mô hình random forest cho bài toán hồi quy, tức là nó dự đoán giá trị liên tục, trong bài toán này là doanh số của sản phẩm.
-  + Mô hình bao gồm 500 cây quyết định. Số cây càng lớn thì mô hình càng trở nên ổn định và chính xác hơn, nhưng cũng sẽ tốn thời gian huấn luyện và yêu cầu bộ nhớ cao hơn.
-  + Số biến được thử ở mỗi lẫn phân tách là 1, nghĩa là với mỗi lần phân chia trong các cây, thuật toán sẽ ngẫu nhiên chọn 1 biến (trong tổng số 3 biến: unit_price, pizza_size, và pizza_category) và tính điểm phân chia tốt nhất dựa trên chúng.
-  + Giá trị trung bình bình phương phần dư là 231.1445, cho thấy sai lệch trung bình giữa các giá trị dự đoán và giá trị thực tế của doanh số là khoảng 15 đơn vị, bằng 13% giá trị trung bình của sales.
-  + Mô hình đã giải thích được 69% sự biến động của doanh số dựa trên các đặc trưng đầu vào.
-
-> Mô hình này khá đáng tin cậy (RMSE không quá cao) nhưng khả năng dự đoán vẫn còn khá thấp (69%).
-
-* Tối ưu hóa mô hình:
-
-Hiện tại, số cây quyết định của mô hình là 500 và số biến được thử tại mỗi lần phân tách là 1.
-
-    - Kiểm tra ngưỡng cây tối ưu chưa:
-    
-```{r}
-plot(rf_sales_model)
-```
-
-> Biểu đồ cho thấy 500 cây là phù hợp vì error tại đây đã rất nhỏ và gần như không còn giảm nữa.
-
-    - Sử dụng tuneRF để tìm tham số mtry tối ưu cho mô hình:
-
-```{r}
-tune_rf <- tuneRF(sales_data[, -which(names(sales_data) == "sales")], sales_data$sales)
-```
-
-> OOB Error rate là lỗi ngoài bộ dữ liệu huấn luyện, phản ánh độ chính xác của mô hình. Dự vào biểu đồ kết hợp với việc dữ liệu có 4 biến độc lập, mà nhiều biến các sự tương tác phức tạp với nhau nên em chọn mtry = 2 để tối ưu mô hình.
-
-```{r}
-rf_sales_model <- randomForest(sales ~ pizza_name + unit_price + pizza_size + pizza_category, data = train_data, mtry = 2)
-
-rf_sales_model
-```
-
-> Từ Mean of squard residuals ta có RMSE bằng khoảng 8.6, giảm 6 đơn vị so với mô hình random forest ban đầu. Và R^2^ bằng 90%, tăng 20%. Chứng tỏ giá trị mtry = 2 là giá trị phù hợp để tối ưu mô hình. Chọn đây là mô hình dự đoán cuối cùng.
-
-* Dự đoán doanh số trên tập dữ liệu kiểm tra
-
-```{r}
-predicted_sales <- predict(rf_sales_model, newdata = test_data)
-
-head(predicted_sales)
-```
-* Kiểm tra độ chính xác
-
-```{r}
-actual_values <- test_data$sales
-
-# Tính R2 (R-squared)
-ss_total <- sum((actual_values - mean(actual_values))^2)
-ss_residual <- sum((actual_values - predicted_sales)^2)
-r_squared <- 1 - (ss_residual / ss_total)
-cat("R-squared:", r_squared)
-```
-
-  + Mô hình đã giải thích được 90% sự biến thiên của sales trong tập dữ liệu kiểm tra.
-
-* Tính toán lỗi RMSE (Root Mean Squared Error)
-
-```{r}
-rmse <- sqrt(mean((predicted_sales - actual_values)^2))
-cat("RMSE", rmse)
-```
-
-  + Trung bình, giá trị doanh số dự đoán và giá trị thực tế của nó chênh lệch nhau khoảng 9 đơn vị, bằng khoảng 8% giá trị trung bình của sales.
-
-> Mô hình có R-squared cao khoảng 90% trên cả tập dữ liệu huấn luyện và tập kiểm tra, nên có thể kết luận rằng mô hình không bị overfitting và đạt hiệu quả dự đoán rất tốt. Bên cạnh đó, RMSE nhỏ cho thấy đây là mô hình rất đáng tin cậy để dự đoán doanh số.
-
-## Kết luận
-
-# Phần 8. Dự đoán doanh thu theo thời gian:
-
-Trước khu đưa ra những dự đoán về doanh thu theo thời gian, chúng ta cần phân tích tổng quan về doanh thu theo thời gian. 
-
-## 8.1. Phân tích doanh thu theo thời gian:
+## 6.4. Phân tích doanh thu theo thời gian:
 
 Phân tích tổng quan đã cho thấy trong năm 2015, cửa hàng có tổng doanh thu là 817,860 USD. Với giá trị đơn hàng nhỏ nhất là 9.75 USD, lớn nhất là 444.40 USD. Phần dưới đây, sẽ phân tích chi tiết hơn về doanh thu thu được của cửa hàng theo thời gian giờ trong ngày, tuần, và tháng trong năm 2015.
 
-### 8.1.1. Phân tích doanh thu theo giờ trong ngày của một tuần:
+### 6.4.1. Phân tích doanh thu theo giờ trong ngày của một tuần
 
 ```{r}
 # Tính toán doanh thu theo giờ trong ngày của một tuần:
@@ -569,7 +446,7 @@ Biểu đồ cho thấy doanh thu đều chạm đỉnh vào 12h các ngày tron
 
 > Cần phân tích chi tiết hơn về các yếu tố gây sự chênh lệch doanh thu giữa các giờ.
 
-### 8.1.2. Phân tích doanh thu một ngày dùng Time Series:
+### 6.4.2. Phân tích doanh thu một ngày dùng Time Series
 
 * Sao chép dữ liệu vào biến df_ts để xử lý trên bản sao không gây ảnh hưởng đến dữ liệu gốc.
 
@@ -610,7 +487,7 @@ plot(revenue_ts_date, main = "Revenue of Pizza Over 12 months", xlab = "Time", y
 > Doanh thu có sự biến động đáng kể hàng ngày, điều này có thể do nhiều yếu tố như ngày trong tuần, ngày lễ, hoặc các sự kiện đặc biệt. Xu hướng biến động: giảm vào đầu tháng và tăng vào cuối tháng. Doanh thu biến động ít hơn vào những ngày đầu năm. 
 > Doanh thu tăng cao bất thường vào những ngày của tháng 5, tháng 7 và khoảng tháng 8. 
 
-### 8.1.3. Phân tích doanh thu theo tháng:
+### 6.4.3. Phân tích doanh thu theo tháng
 
 ```{r}
 revenue_by_month <- df %>% 
@@ -638,7 +515,144 @@ ggplot(revenue_by_month, aes(x = order_month, y = revenue, group = 1, fill = ord
 > Trong năm 2015, doanh thu cao nhất được ghi nhận vào tháng 7 với hơn 70.000 USD. Các tháng có nhu cầu cao nhất là Tháng Bảy và Tháng Mười Một, nhưng Tháng Mười Một lại có doanh thu thấp hơn so với Tháng Năm. Điều này cho thấy rằng dù có nhu cầu tiêu thụ cao vào tháng này, nhưng doanh thu không tương ứng, có thể do các chương trình khuyến mãi hoặc giá bán không phù hợp. 
 > Biểu đồ đường cho thấy doanh thu giữa các tháng về cơ bản không có sự chênh lệch lớn, doanh thu ổn định ở mức trên 60.000 USD mỗi tháng. Điều này cho thấy cửa hàng duy trì được sự ổn định trong doanh thu hàng tháng, tuy nhiên, cần có các chiến lược cụ thể để tối ưu hóa doanh thu trong các tháng có nhu cầu cao.
 
-## 8.2. Dự đoán doanh thu trong 6 tháng tiếp theo bằng mô hình ARIMA: 
+# Phần 7. Dự đoán doanh số theo sản phẩm:
+
+Mục tiêu của phần này là xây dựng mô hình dự đoán doanh số trong một tháng của một bánh pizza cụ thể, tức là dự đoán xem cửa hàng bán được bao nhiêu bánh pizza đó bằng các đặc trưng của nó cùng với dữ liệu bán hàng trong quá khứ.
+
+* Tổng hợp dữ liệu chứa doanh số mỗi tháng của từng bánh pizza
+
+```{r}
+sales_data <- df %>%  group_by(pizza_name, unit_price, pizza_size, pizza_category, order_month) %>% summarise(sales = sum(quantity))
+
+dim(sales_data)
+summary(sales_data)
+```
+Dữ liệu gồm 1091 quan sát, mỗi quan sát thể hiện doanh số của một bánh với kích cỡ xác định (hoặc S hoặc M hoặc L hoặc XL hoặc XXL), đơn giá tương ứng, thuộc danh mục nào và doanh số trong một tháng cụ thể là bao nhiêu. 
+
+Biến sales là biến phụ thuộc mà ta xây dựng mô hình để dự đoán, dao động từ 1 đến 444, với trung bình là 115, đây sẽ là cơ sở để đánh giá mô hình.
+
+Các biến độc lập bao gồm: pizza_name, unit_price, pizza_size và pizza_category. Như đã kiểm định khi phân tích doanh số của từng pizza (6.3.3), doanh số giữa các tháng của một bánh pizza tương đối ổn định, nên không chọn order_month làm biến độc lập.
+
+* Trực quan hóa mối quan hệ giữa doanh số và giá cùng với kích cỡ và danh mục bánh.
+
+```{r}
+sales_data %>% 
+  ggplot(aes(x = unit_price, y = sales, shape = pizza_size, color = pizza_category)) +
+  geom_jitter()
+```
+
+> Biểu đồ cho thấy tác động của giá bán lên sales khác nhau đối với các cỡ bánh khác nhau và các loại bánh khác nhau. Cụ thể như bánh size S giá thấp (~10) có doanh số cao hơn rất nhiều so với bánh size S giá trên 20 USD. Và cùng ở khoảng giá 20 USD nhưng doanh số của các danh mục chênh lệch nhau rất rõ rệt. Vì vậy, ngoài 4 biến độc lập đã nêu thì em sẽ thêm sự tác giữa unit_price và pizza_size, giữa unit_price và pizza_category vào mô hình dự đoán.
+
+## 7.1. Dự đoán doanh số của sản phẩm bằng hồi quy tuyến tính
+
+```{r}
+lm_sales_model <- lm(sales ~ pizza_name + unit_price * (pizza_size + pizza_category), data = sales_data)
+summary(lm_sales_model)
+```
+
+> F-statistic bằng 55.94 với p-value < 2.2e-16, cho thấy rằng mô hình hồi quy này có ý nghĩa thống kê. Cụ thể về ý nghĩa thống kê của từng biến, các biến giả của pizza_category bị thiếu giá trị, nhưng các biến tương tác của nó với unit_price có p-value rất thấp, chứng tỏ đưa sự tương tác này vào mô hình là hợp lý. Một số biến dummy của pizza_name, pizza_size có p-value lớn hơn 0.05 nhưng đa số có p-value nhỏ, chứng tỏ các biến độc lập này có ý nghĩa thống kê.
+
+> Multiple R-squared bằng 0.6862 và Adjusted R-squared bằng 0.6739 cho thấy mô hình giải thích khoảng 67% sự biến động của doanh số trong tập dữ liệu. Mặc dù không quá cao, giá trị này vẫn cho thấy mô hình có thể giải thích một phần đáng kể sự biến động doanh số trong tập dữ liệu.
+
+## 7.2. Dự đoán doanh số theo sản phẩm bằng random forest
+
+* Chia tập dữ liệu thành 80% cho huấn luyện và 20% cho kiểm tra.
+
+```{r}
+set.seed(123)  
+train_index <- sample(nrow(sales_data), 0.8 * nrow(sales_data))
+train_data <- sales_data[train_index, ]
+test_data <- sales_data[-train_index, ]
+```
+
+* Xây dựng mô hình dự đoán doanh số
+
+Trong công thức của mô hình này, em không chỉ định cụ thể sự tương tác giữa các biến độc lập như trong mô hình hồi quy tuyến tính vì random forest có khả năng tự học và nắm bắt các tương tác phức tạp giữa các biến.
+
+```{r}
+rf_sales_model <- randomForest(sales ~ pizza_name + unit_price + pizza_size + pizza_category, data = train_data)
+
+rf_sales_model
+```
+
+Thông tin về mô hình:
+  
+  + Đây là một mô hình random forest cho bài toán hồi quy, tức là nó dự đoán giá trị liên tục, trong bài toán này là doanh số của sản phẩm.
+  + Mô hình bao gồm 500 cây quyết định. Số cây càng lớn thì mô hình càng trở nên ổn định và chính xác hơn, nhưng cũng sẽ tốn thời gian huấn luyện và yêu cầu bộ nhớ cao hơn.
+  + Số biến được thử ở mỗi lẫn phân tách là 1, nghĩa là với mỗi lần phân chia trong các cây, thuật toán sẽ ngẫu nhiên chọn 1 biến (trong tổng số 3 biến: unit_price, pizza_size, và pizza_category) và tính điểm phân chia tốt nhất dựa trên chúng.
+  + Từ giá trị trung bình bình phương phần dư (Mean of squared residuals), ta có sai lệch trung bình giữa các giá trị dự đoán và giá trị thực tế của doanh số là khoảng 15 đơn vị (RMSE), bằng 13% giá trị trung bình của sales.
+  + Mô hình đã giải thích được 69% sự biến động của doanh số dựa trên các đặc trưng đầu vào.
+
+> Mô hình này khá đáng tin cậy (RMSE không quá cao) nhưng khả năng dự đoán vẫn còn khá thấp.
+
+* Tối ưu hóa mô hình:
+
+Hiện tại, số cây quyết định của mô hình là 500 và số biến được thử tại mỗi lần phân tách là 1.
+
+    - Kiểm tra ngưỡng cây tối ưu chưa:
+    
+```{r}
+plot(rf_sales_model)
+```
+
+> Biểu đồ cho thấy 500 cây là phù hợp vì error tại đây đã rất nhỏ và gần như không còn giảm nữa.
+
+    - Sử dụng tuneRF để tìm tham số mtry tối ưu cho mô hình:
+
+```{r}
+tune_rf <- tuneRF(sales_data[, -which(names(sales_data) == "sales")], sales_data$sales)
+```
+
+> OOB Error rate là lỗi ngoài bộ dữ liệu huấn luyện, phản ánh độ chính xác của mô hình. Dự vào biểu đồ kết hợp với việc dữ liệu có 4 biến độc lập, mà nhiều biến các sự tương tác phức tạp với nhau nên em chọn mtry = 2 để tối ưu mô hình.
+
+```{r}
+rf_sales_model <- randomForest(sales ~ pizza_name + unit_price + pizza_size + pizza_category, data = train_data, mtry = 2)
+
+rf_sales_model
+```
+
+> Từ Mean of squard residuals ta có RMSE bằng khoảng 8.6, giảm 6 đơn vị so với mô hình random forest ban đầu. Và R^2^ bằng 90%, tăng 20%. Chứng tỏ giá trị mtry = 2 là giá trị phù hợp để tối ưu mô hình. Chọn đây là mô hình dự đoán cuối cùng.
+
+* Dự đoán doanh số trên tập dữ liệu kiểm tra
+
+```{r}
+predicted_sales <- predict(rf_sales_model, newdata = test_data)
+
+head(predicted_sales)
+```
+
+* Kiểm tra độ chính xác
+
+```{r}
+actual_values <- test_data$sales
+
+# Tính R2 (R-squared)
+ss_total <- sum((actual_values - mean(actual_values))^2)
+ss_residual <- sum((actual_values - predicted_sales)^2)
+r_squared <- 1 - (ss_residual / ss_total)
+cat("R-squared: ", r_squared)
+```
+
+\
+Mô hình đã giải thích được 90% sự biến thiên của sales trong tập dữ liệu kiểm tra.
+
+* Tính toán lỗi RMSE (Root Mean Squared Error)
+
+```{r}
+rmse <- sqrt(mean((predicted_sales - actual_values)^2))
+cat("RMSE: ", rmse)
+```
+
+\
+Trung bình, giá trị doanh số dự đoán và giá trị thực tế của nó chênh lệch nhau khoảng 9 đơn vị, bằng khoảng 8% giá trị trung bình của sales.
+
+> Mô hình có R-squared cao khoảng 90% trên cả tập dữ liệu huấn luyện và tập kiểm tra, nên có thể kết luận rằng mô hình không bị overfitting và đạt hiệu quả dự đoán rất tốt. Bên cạnh đó, sai số dự đoán (RMSE) nhỏ cho thấy đây là mô hình rất đáng tin cậy để dự đoán doanh số.
+
+## Kết luận
+
+Mô hình random forest sau khi được tối ưu đã dự đoán doanh số của sản phẩm tốt hơn rất nhiều so với mô hình hồi quy tuyến tính vì nó có khả năng nắm bắt các mối quan hệ phi tuyến tính và tương tác phức tạp giữa các biến độc lập pizza_name, unit_price, pizza_size, pizza_category mà mô hình hồi quy tuyến tính chưa mô tả được. Mô hình random forest còn có khả năng xử lý hiệu quả biến phân loại nhiều mức một cách tự nhiên khi xây dựng các cây quyết định, trong khi đó mô hình hồi quy tuyến tính sẽ dùng kỹ thuật one hot encoding để tạo biến giả, tăng độ phức tạp của mô hình và có thể gây ra vấn đề đa cộng tuyến. Bên cạnh đó, nó ít bị ảnh hưởng bởi giá trị ngoại lai (outliers) nhờ lấy trung bình của nhiều cây quyết định. Hơn nữa, random forest không yêu cầu các giả định phân phối nghiêm ngặt, phù hợp với tính chất dữ liệu trong bài toán này.
+
+# Phần 8. Dự đoán doanh thu trong 6 tháng tiếp theo bằng mô hình ARIMA: 
 
 Mục tiêu của mô hình là dự báo doanh thu theo ngày của chuỗi doanh thu theo ngày(revenue_ts_date) từ dữ liệu được khai thác trong giai đoạn từ 01/01/2015 đến 20/12/2015 theo phương pháp ARIMA. 
 
