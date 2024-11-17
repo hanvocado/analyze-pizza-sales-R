@@ -48,9 +48,11 @@ library(forecast)
   
   * Phân tích và trực quan hóa doanh số dựa trên kích cỡ bánh, danh mục bánh, và xác định các pizza bán chạy nhất cũng như kém phổ biến nhất.
   
+  * Phân tích và trực quan hóa doanh thu theo thời gian: doanh thu theo giờ, doanh thu theo ngày, doanh thu theo tháng của cửa hàng trong năm 2015.
+  
   * Xây dựng mô hình dự đoán doanh số của sản phẩm có độ chính xác trên 80%.
   
-  * Xây dựng mô hình dự đoán doanh thu của cửa hàng có độ chính xác trên 80%.
+  * Xây dựng mô hình dự đoán doanh thu trong 6 tháng tiếp theo của cửa hàng có độ chính xác trên 80%.
 
 # Phần 4. Thông tin về tập dữ liệu
 
@@ -153,12 +155,20 @@ Trong năm 2015, cửa hàng có 21350 đơn đặt hàng, bán ra tổng 49574 
 ```{r}
 by_order_df %>% select(quantity, total_price) %>% summary()
 ```
-Giá trị đơn hàng nhỏ nhất là 9.75 USD, lớn nhất là 444.40 USD. Trung bình, một đơn đặt hàng trị giá 32.5 USD và mua 2.322 chiếc bánh pizza.
+# Nhận xét:
+
+> Trung bình, mỗi đơn hàng đặt khoảng 2 chiếc bánh pizza, thể hiện phần lớn khách hàng có xu hướng đặt cho gia đình nhỏ hoặc nhóm bạn. Số lượng pizza lớn nhất cho một đơn hàng là 28 chiếc, cho thấy có thể có những đơn đặt hàng số lượng lớn như từ các sự kiện, các buổi tiệc.
+> Dữ liệu cũng cho thấy sự phân hóa trong chi tiêu của khách hàng: đơn hàng thấp nhất là 9.75 USD, cao nhất là 444.4 USD, trong khi trung bình là 32.5 USD. 
+Cửa hàng có thể tận dụng sự phân hóa này để tạo các chiến lược khuyến mãi phù hợp cho từng nhóm và thiết kế thực đơn, combo hợp lý, tập trung vào các món phổ biến và lợi nhuận cao với số lượng pizza phù hợp theo từng nhóm khách hàng, tối ưu hóa tổng giá trị đơn hàng dao động quanh mức giá  trung bình 32.5 USD.
+
 ```{r}
 by_order_df %>% ggplot(aes(x = total_price)) + geom_histogram(fill = "#FF9999") +
-  labs(title = "Phân bố của giá trị một đơn hàng", x = "Giá trị")
+  labs(title = "Distribution of value of an order", x = "Value") +
+  theme_minimal()
 ```
 
+> Biểu đồ histogram của giá trị đơn hàng cho thấy phân phối giá trị lệch phải. Số lượng đơn hàng giá trị hơn 100 USD rất ít. Đa số đơn hàng trị giá từ 10 - 20 USD.
+Xu hướng này cho thấy cửa hàng chủ yếu thu hút khách hàng với các đơn hàng có giá trị nhỏ và trung bình, nhưng vẫn có tiềm năng phục vụ các đơn hàng có giá trị lớn.
 
 ## 6.2. Phân tích nhu cầu tiêu thụ pizza theo thời gian
 
@@ -434,18 +444,14 @@ ggplot(revenue_by_hour_day, aes(x = order_hour, y = revenue, fill=order_weekday,
   facet_wrap(~order_weekday, nrow = 7, scales = "free_y")+
   theme_minimal() +
   labs(
-    title = "Doanh thu theo giờ trong ngày",
-    x = "Giờ trong ngày",
-    y = "Doanh thu (USD)",
+    title = "Revenue by hour of day",
+    x = "Time of day",
+    y = "Revenue (USD)",
   ) +
   scale_y_continuous(labels = scales::comma)
 ```
 
-Biểu đồ cho thấy doanh thu đều chạm đỉnh vào 12h các ngày trong tuần, trừ Thứ 7 và Chủ Nhật. Điều này cho thấy doanh thu sẽ cao vào giờ nghỉ trưa của những ngày đi làm của khách hàng. Ngày Thứ 7 và Chủ Nhật, doanh thu sẽ cao hơn vào thời điểm sau 17h đến 20h. Điều này có thể do khách hàng có xu hướng ăn tối muộn hơn vào cuối tuần. Bên cạnh đó, có sự chênh lệch doanh thu đáng kể vào các thời điểm trong ngày. 
-
-> Cửa hàng có thể triển khai các chương trình khuyến mãi vào các khung giờ thấp điểm để thu hút thêm khách hàng và tăng doanh thu.
-
-> Cần phân tích chi tiết hơn về các yếu tố gây sự chênh lệch doanh thu giữa các giờ.
+> Biểu đồ cho thấy doanh thu đều chạm đỉnh vào 12h các ngày trong tuần, trừ Thứ 7 và Chủ Nhật. Điều này cho thấy doanh thu sẽ cao vào giờ nghỉ trưa của những ngày đi làm của khách hàng. Ngày Thứ 7 và Chủ Nhật, doanh thu sẽ cao hơn vào thời điểm sau 17h đến 20h. Điều này có thể do khách hàng có xu hướng ăn tối muộn hơn vào cuối tuần. Bên cạnh đó, có sự chênh lệch doanh thu đáng kể vào các thời điểm trong ngày. Cửa hàng có thể triển khai các chương trình khuyến mãi vào các khung giờ thấp điểm để thu hút thêm khách hàng và tăng doanh thu.
 
 ### 6.4.2. Phân tích doanh thu một ngày dùng Time Series
 
@@ -506,9 +512,9 @@ ggplot(revenue_by_month, aes(x = order_month, y = revenue, group = 1, fill = ord
   geom_point(color = "red", size = 2) +
   theme_minimal() +
   labs(
-    title = "Doanh thu theo tháng",
-    x = "Tháng",
-    y = "Doanh thu (USD)"
+    title = "Revenue by month",
+    x = "Month",
+    y = "Revenue (USD)"
   ) +
   scale_y_continuous(labels = scales::comma)
 ```
@@ -670,7 +676,7 @@ Mục tiêu của mô hình là dự báo doanh thu theo ngày của chuỗi doa
 * Xác định hệ số tự tương quan (AFC) thông qua biểu đồ AFC: 
 ```{r}
 # Vẽ biểu đồ ACF cho chuỗi thời gian revenue_ts_date
-acf(revenue_ts_date, main = "Biểu đồ ACF của doanh thu theo thời gian")
+acf(revenue_ts_date, main = " ACF chart for revenue_ts_date time series")
 ```
 
 \
@@ -680,7 +686,7 @@ Trục hoành là độ trễ, trục tung là giá trị của hệ số tự t
 
 * Xác định q thông qua biểu đồ PACF: 
 ```{r}
-pacf(revenue_by_date, main = "Biểu đồ PACF của doanh thu theo thời gian")
+pacf(revenue_by_date, main = "PACF chart for revenue_ts_date time series")
 ```
 
 \
@@ -717,20 +723,20 @@ checkresiduals(auto_model)
 * Kiểm tra lại với các mô hình ARIMA khác nhau: 
 
 ```{r}
-# ARIMA(1,0,1)
-model_101 <- arima(revenue_ts_date, order = c(2, 0, 0))
-summary(model_101)
+# ARIMA(2,0,0)
+model_200 <- arima(revenue_ts_date, order = c(2, 0, 0))
+summary(model_200)
 
 # ARIMA(2,0,2)
 model_202 <- arima(revenue_ts_date, order = c(2, 0, 2))
 summary(model_202)
 
-# ARIMA(1,1,1)
-model_111 <- arima(revenue_ts_date, order = c(5, 0, 0))
-summary(model_111)
+# ARIMA(5,0,0)
+model_500 <- arima(revenue_ts_date, order = c(5, 0, 0))
+summary(model_500)
 
 # ARIMA(2,1,2)
-model_212 <- arima(revenue_ts_date, order = c(0, 0, 5))
+model_212 <- arima(revenue_ts_date, order = c(2, 1, 2))
 summary(model_212)
 ```
 
@@ -745,9 +751,11 @@ forecast_values <- forecast(auto_model, h = 180)
 # Hiển thị dự đoán
 print(forecast_values)
 ```
++ Trực quan hóa số liệu dự đoán:
 
 ```{r}
-plot(forecast_values, main = "Dự đoán doanh thu 6 tháng tiếp theo", xlab = "Thời gian", ylab = "Doanh thu")
+plot(forecast_values, main = "
+Forecast revenue for the next 6 months", xlab = "Time", ylab = "Revenue (USD)")
 lines(revenue_ts_date, col = "blue", lwd = 2)
 ```
 
