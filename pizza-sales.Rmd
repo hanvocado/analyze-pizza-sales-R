@@ -416,6 +416,7 @@ print(kruskal_test)
 ```
 
 Kết quả p-value khoảng 0.4 trong kiểm định Kruskal-Wallis có thể chỉ ra rằng không có sự khác biệt đáng kể trong doanh số giữa các tháng đối với mỗi pizza, chứng tỏ doanh số giữa các tháng tương đối ổn định.
+<<<<<<< HEAD
 
 ## 6.4. Phân tích doanh thu theo thời gian:
 
@@ -522,6 +523,8 @@ ggplot(revenue_by_month, aes(x = order_month, y = revenue, group = 1, fill = ord
 
 > Trong năm 2015, doanh thu cao nhất được ghi nhận vào tháng 7 với hơn 70.000 USD. Các tháng có nhu cầu cao nhất là Tháng Bảy và Tháng Mười Một, nhưng Tháng Mười Một lại có doanh thu thấp hơn so với Tháng Năm. Điều này cho thấy rằng dù có nhu cầu tiêu thụ cao vào tháng này, nhưng doanh thu không tương ứng, có thể do các chương trình khuyến mãi hoặc giá bán không phù hợp. 
 > Biểu đồ đường cho thấy doanh thu giữa các tháng về cơ bản không có sự chênh lệch lớn, doanh thu ổn định ở mức trên 60.000 USD mỗi tháng. Điều này cho thấy cửa hàng duy trì được sự ổn định trong doanh thu hàng tháng, tuy nhiên, cần có các chiến lược cụ thể để tối ưu hóa doanh thu trong các tháng có nhu cầu cao.
+=======
+>>>>>>> 06c0f47f222796fce0b9b04b4325b030c9c55e49
 
 # Phần 7. Dự đoán doanh số theo sản phẩm:
 
@@ -539,7 +542,11 @@ Dữ liệu gồm 1091 quan sát, mỗi quan sát thể hiện doanh số của 
 
 Biến sales là biến phụ thuộc mà ta xây dựng mô hình để dự đoán, dao động từ 1 đến 444, với trung bình là 115, đây sẽ là cơ sở để đánh giá mô hình.
 
+<<<<<<< HEAD
 Các biến độc lập bao gồm: pizza_name, unit_price, pizza_size và pizza_category. Như đã kiểm định khi phân tích doanh số của từng pizza (6.3.3), doanh số giữa các tháng của một bánh pizza tương đối ổn định, nên không chọn order_month làm biến độc lập.
+=======
+Các biến độc lập bao gồm: pizza_name, unit_price, pizza_size và pizza_category. Như đã kiểm định ở trên doanh số giữa các tháng của một bánh pizza tương đối ổn định, nên không chọn order_month làm biến độc lập.
+>>>>>>> 06c0f47f222796fce0b9b04b4325b030c9c55e49
 
 * Trực quan hóa mối quan hệ giữa doanh số và giá cùng với kích cỡ và danh mục bánh.
 
@@ -588,10 +595,17 @@ Thông tin về mô hình:
   + Đây là một mô hình random forest cho bài toán hồi quy, tức là nó dự đoán giá trị liên tục, trong bài toán này là doanh số của sản phẩm.
   + Mô hình bao gồm 500 cây quyết định. Số cây càng lớn thì mô hình càng trở nên ổn định và chính xác hơn, nhưng cũng sẽ tốn thời gian huấn luyện và yêu cầu bộ nhớ cao hơn.
   + Số biến được thử ở mỗi lẫn phân tách là 1, nghĩa là với mỗi lần phân chia trong các cây, thuật toán sẽ ngẫu nhiên chọn 1 biến (trong tổng số 3 biến: unit_price, pizza_size, và pizza_category) và tính điểm phân chia tốt nhất dựa trên chúng.
+<<<<<<< HEAD
   + Từ giá trị trung bình bình phương phần dư (Mean of squared residuals), ta có sai lệch trung bình giữa các giá trị dự đoán và giá trị thực tế của doanh số là khoảng 15 đơn vị (RMSE), bằng 13% giá trị trung bình của sales.
   + Mô hình đã giải thích được 69% sự biến động của doanh số dựa trên các đặc trưng đầu vào.
 
 > Mô hình này khá đáng tin cậy (RMSE không quá cao) nhưng khả năng dự đoán vẫn còn khá thấp.
+=======
+  + Giá trị trung bình bình phương phần dư là 231.1445, cho thấy sai lệch trung bình giữa các giá trị dự đoán và giá trị thực tế của doanh số là khoảng 15 đơn vị, bằng 13% giá trị trung bình của sales.
+  + Mô hình đã giải thích được 69% sự biến động của doanh số dựa trên các đặc trưng đầu vào.
+
+> Mô hình này khá đáng tin cậy (RMSE không quá cao) nhưng khả năng dự đoán vẫn còn khá thấp (69%).
+>>>>>>> 06c0f47f222796fce0b9b04b4325b030c9c55e49
 
 * Tối ưu hóa mô hình:
 
@@ -641,8 +655,12 @@ r_squared <- 1 - (ss_residual / ss_total)
 cat("R-squared: ", r_squared)
 ```
 
+<<<<<<< HEAD
 \
 Mô hình đã giải thích được 90% sự biến thiên của sales trong tập dữ liệu kiểm tra.
+=======
+  + Mô hình đã giải thích được 90% sự biến thiên của sales trong tập dữ liệu kiểm tra.
+>>>>>>> 06c0f47f222796fce0b9b04b4325b030c9c55e49
 
 * Tính toán lỗi RMSE (Root Mean Squared Error)
 
@@ -651,10 +669,16 @@ rmse <- sqrt(mean((predicted_sales - actual_values)^2))
 cat("RMSE: ", rmse)
 ```
 
+<<<<<<< HEAD
 \
 Trung bình, giá trị doanh số dự đoán và giá trị thực tế của nó chênh lệch nhau khoảng 9 đơn vị, bằng khoảng 8% giá trị trung bình của sales.
 
 > Mô hình có R-squared cao khoảng 90% trên cả tập dữ liệu huấn luyện và tập kiểm tra, nên có thể kết luận rằng mô hình không bị overfitting và đạt hiệu quả dự đoán rất tốt. Bên cạnh đó, sai số dự đoán (RMSE) nhỏ cho thấy đây là mô hình rất đáng tin cậy để dự đoán doanh số.
+=======
+  + Trung bình, giá trị doanh số dự đoán và giá trị thực tế của nó chênh lệch nhau khoảng 9 đơn vị, bằng khoảng 8% giá trị trung bình của sales.
+
+> Mô hình có R-squared cao khoảng 90% trên cả tập dữ liệu huấn luyện và tập kiểm tra, nên có thể kết luận rằng mô hình không bị overfitting và đạt hiệu quả dự đoán rất tốt. Bên cạnh đó, RMSE nhỏ cho thấy đây là mô hình rất đáng tin cậy để dự đoán doanh số.
+>>>>>>> 06c0f47f222796fce0b9b04b4325b030c9c55e49
 
 ## Kết luận
 
