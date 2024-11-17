@@ -48,8 +48,11 @@ library(forecast)
   
   * Phân tích và trực quan hóa doanh số dựa trên kích cỡ bánh, danh mục bánh, và xác định các pizza bán chạy nhất cũng như kém phổ biến nhất.
   
+<<<<<<< HEAD
   * Phân tích và trực quan hóa doanh thu theo thời gian: doanh thu theo giờ trong ngày của một tuần, doanh thu theo các ngày và doanh thu theo tháng của năm 2015.
   
+=======
+>>>>>>> e481cfb9c55448ab128a93fbe84afeea72410f47
   * Xây dựng mô hình dự đoán doanh số của sản phẩm có độ chính xác trên 80%.
   
   * Xây dựng mô hình dự đoán doanh thu của cửa hàng có độ chính xác trên 80%.
@@ -166,6 +169,10 @@ by_order_df %>% ggplot(aes(x = total_price)) + geom_histogram(fill = "#FF9999") 
 > Biểu đồ histogram của giá trị đơn hàng cho thấy phân phối giá trị lệch phải. Số lượng đơn hàng giá trị hơn 100 USD rất ít. Đa số đơn hàng trị giá từ 10 - 20 USD.
 Xu hướng này cho thấy cửa hàng chủ yếu thu hút khách hàng với các đơn hàng có giá trị nhỏ và trung bình, nhưng vẫn có tiềm năng phục vụ các đơn hàng có giá trị lớn.
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> e481cfb9c55448ab128a93fbe84afeea72410f47
 ## 6.2. Phân tích nhu cầu tiêu thụ pizza theo thời gian
 
 Biểu đồ nhu cầu tiêu thụ pizza theo giờ
@@ -526,6 +533,110 @@ ggplot(revenue_by_month, aes(x = order_month, y = revenue, group = 1, fill = ord
 =======
 >>>>>>> 06c0f47f222796fce0b9b04b4325b030c9c55e49
 
+## 6.4. Phân tích doanh thu theo thời gian:
+
+Phân tích tổng quan đã cho thấy trong năm 2015, cửa hàng có tổng doanh thu là 817,860 USD. Với giá trị đơn hàng nhỏ nhất là 9.75 USD, lớn nhất là 444.40 USD. Phần dưới đây, sẽ phân tích chi tiết hơn về doanh thu thu được của cửa hàng theo thời gian giờ trong ngày, tuần, và tháng trong năm 2015.
+
+### 6.4.1. Phân tích doanh thu theo giờ trong ngày của một tuần
+
+```{r}
+# Tính toán doanh thu theo giờ trong ngày của một tuần:
+revenue_by_hour_day <- df %>% 
+  group_by(order_hour, order_weekday) %>% 
+  summarise(revenue = sum(total_price))
+
+print(revenue_by_hour_day)
+```
+```{r}
+# Biểu đồ đường hiển thị doanh thu theo giờ trong ngày của một tuần:
+ggplot(revenue_by_hour_day, aes(x = order_hour, y = revenue, fill=order_weekday, color=order_weekday, group = order_weekday)) +
+  geom_line()+
+  geom_point(size = 2) +
+  facet_wrap(~order_weekday, nrow = 7, scales = "free_y")+
+  theme_minimal() +
+  labs(
+    title = "Doanh thu theo giờ trong ngày",
+    x = "Giờ trong ngày",
+    y = "Doanh thu (USD)",
+  ) +
+  scale_y_continuous(labels = scales::comma)
+```
+
+Biểu đồ cho thấy doanh thu đều chạm đỉnh vào 12h các ngày trong tuần, trừ Thứ 7 và Chủ Nhật. Điều này cho thấy doanh thu sẽ cao vào giờ nghỉ trưa của những ngày đi làm của khách hàng. Ngày Thứ 7 và Chủ Nhật, doanh thu sẽ cao hơn vào thời điểm sau 17h đến 20h. Điều này có thể do khách hàng có xu hướng ăn tối muộn hơn vào cuối tuần. Bên cạnh đó, có sự chênh lệch doanh thu đáng kể vào các thời điểm trong ngày. 
+
+> Cửa hàng có thể triển khai các chương trình khuyến mãi vào các khung giờ thấp điểm để thu hút thêm khách hàng và tăng doanh thu.
+
+> Cần phân tích chi tiết hơn về các yếu tố gây sự chênh lệch doanh thu giữa các giờ.
+
+### 6.4.2. Phân tích doanh thu một ngày dùng Time Series
+
+* Sao chép dữ liệu vào biến df_ts để xử lý trên bản sao không gây ảnh hưởng đến dữ liệu gốc.
+
+```{r}
+df_ts <- df
+```
+
+* Chuyển đổi cột order_date thành kiểu Date
+
+```{r}
+df_ts$order_date <- as.Date(df_ts$order_date, format = "%Y-%m-%d")
+```
+
+* Tính toán doanh thu theo ngày của một năm:  
+
+```{r}
+revenue_by_date <- df_ts %>% 
+  group_by(order_date) %>% 
+  summarise(revenue = sum(total_price))
+revenue_by_date
+```
+
+* Tạo chuỗi thời gian (time series) với tần suất 365 ngày (Năm 2015 không phải năm nhuận)
+
+```{r}
+revenue_ts_date<-ts(revenue_by_date$revenue, start = c(2015, 1), frequency = 365)
+# Kiểm tra chuỗi thời gian
+print(revenue_ts_date)
+```
+
+* Trực quan hóa doanh thu theo ngày với time_series do có nhiều điểm dữ liệu:
+
+```{r}
+plot(revenue_ts_date, main = "Revenue of Pizza Over 12 months", xlab = "Time", ylab = "Revenue (USD)", col = "red", lwd = 2)
+```
+
+> Xu hướng tổng thể: Có sự biến động trong doanh thu theo ngày trong năm 2015 của cửa hàng. Có những ngày doanh thu cao hơn và những ngày doanh thu thấp hơn.
+> Doanh thu có sự biến động đáng kể hàng ngày, điều này có thể do nhiều yếu tố như ngày trong tuần, ngày lễ, hoặc các sự kiện đặc biệt. Xu hướng biến động: giảm vào đầu tháng và tăng vào cuối tháng. Doanh thu biến động ít hơn vào những ngày đầu năm. 
+> Doanh thu tăng cao bất thường vào những ngày của tháng 5, tháng 7 và khoảng tháng 8. 
+
+### 6.4.3. Phân tích doanh thu theo tháng
+
+```{r}
+revenue_by_month <- df %>% 
+  group_by(order_month) %>% 
+  summarise(revenue = sum(total_price))
+revenue_by_month
+```
+
+* Trực quan hóa bằng biểu đồ cột để so sánh doanh thu giữa các tháng trong năm: 
+
+```{r}
+ggplot(revenue_by_month, aes(x = order_month, y = revenue, group = 1, fill = order_month)) +
+  geom_bar(stat = "identity") +
+  geom_line(aes(group = 1), color = "red", size = 1) +
+  geom_point(color = "red", size = 2) +
+  theme_minimal() +
+  labs(
+    title = "Doanh thu theo tháng",
+    x = "Tháng",
+    y = "Doanh thu (USD)"
+  ) +
+  scale_y_continuous(labels = scales::comma)
+```
+
+> Trong năm 2015, doanh thu cao nhất được ghi nhận vào tháng 7 với hơn 70.000 USD. Các tháng có nhu cầu cao nhất là Tháng Bảy và Tháng Mười Một, nhưng Tháng Mười Một lại có doanh thu thấp hơn so với Tháng Năm. Điều này cho thấy rằng dù có nhu cầu tiêu thụ cao vào tháng này, nhưng doanh thu không tương ứng, có thể do các chương trình khuyến mãi hoặc giá bán không phù hợp. 
+> Biểu đồ đường cho thấy doanh thu giữa các tháng về cơ bản không có sự chênh lệch lớn, doanh thu ổn định ở mức trên 60.000 USD mỗi tháng. Điều này cho thấy cửa hàng duy trì được sự ổn định trong doanh thu hàng tháng, tuy nhiên, cần có các chiến lược cụ thể để tối ưu hóa doanh thu trong các tháng có nhu cầu cao.
+
 # Phần 7. Dự đoán doanh số theo sản phẩm:
 
 Mục tiêu của phần này là xây dựng mô hình dự đoán doanh số trong một tháng của một bánh pizza cụ thể, tức là dự đoán xem cửa hàng bán được bao nhiêu bánh pizza đó bằng các đặc trưng của nó cùng với dữ liệu bán hàng trong quá khứ.
@@ -543,10 +654,14 @@ Dữ liệu gồm 1091 quan sát, mỗi quan sát thể hiện doanh số của 
 Biến sales là biến phụ thuộc mà ta xây dựng mô hình để dự đoán, dao động từ 1 đến 444, với trung bình là 115, đây sẽ là cơ sở để đánh giá mô hình.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Các biến độc lập bao gồm: pizza_name, unit_price, pizza_size và pizza_category. Như đã kiểm định khi phân tích doanh số của từng pizza (6.3.3), doanh số giữa các tháng của một bánh pizza tương đối ổn định, nên không chọn order_month làm biến độc lập.
 =======
 Các biến độc lập bao gồm: pizza_name, unit_price, pizza_size và pizza_category. Như đã kiểm định ở trên doanh số giữa các tháng của một bánh pizza tương đối ổn định, nên không chọn order_month làm biến độc lập.
 >>>>>>> 06c0f47f222796fce0b9b04b4325b030c9c55e49
+=======
+Các biến độc lập bao gồm: pizza_name, unit_price, pizza_size và pizza_category. Như đã kiểm định khi phân tích doanh số của từng pizza (6.3.3), doanh số giữa các tháng của một bánh pizza tương đối ổn định, nên không chọn order_month làm biến độc lập.
+>>>>>>> e481cfb9c55448ab128a93fbe84afeea72410f47
 
 * Trực quan hóa mối quan hệ giữa doanh số và giá cùng với kích cỡ và danh mục bánh.
 
@@ -596,6 +711,7 @@ Thông tin về mô hình:
   + Mô hình bao gồm 500 cây quyết định. Số cây càng lớn thì mô hình càng trở nên ổn định và chính xác hơn, nhưng cũng sẽ tốn thời gian huấn luyện và yêu cầu bộ nhớ cao hơn.
   + Số biến được thử ở mỗi lẫn phân tách là 1, nghĩa là với mỗi lần phân chia trong các cây, thuật toán sẽ ngẫu nhiên chọn 1 biến (trong tổng số 3 biến: unit_price, pizza_size, và pizza_category) và tính điểm phân chia tốt nhất dựa trên chúng.
 <<<<<<< HEAD
+<<<<<<< HEAD
   + Từ giá trị trung bình bình phương phần dư (Mean of squared residuals), ta có sai lệch trung bình giữa các giá trị dự đoán và giá trị thực tế của doanh số là khoảng 15 đơn vị (RMSE), bằng 13% giá trị trung bình của sales.
   + Mô hình đã giải thích được 69% sự biến động của doanh số dựa trên các đặc trưng đầu vào.
 
@@ -606,6 +722,12 @@ Thông tin về mô hình:
 
 > Mô hình này khá đáng tin cậy (RMSE không quá cao) nhưng khả năng dự đoán vẫn còn khá thấp (69%).
 >>>>>>> 06c0f47f222796fce0b9b04b4325b030c9c55e49
+=======
+  + Từ giá trị trung bình bình phương phần dư (Mean of squared residuals), ta có sai lệch trung bình giữa các giá trị dự đoán và giá trị thực tế của doanh số là khoảng 15 đơn vị (RMSE), bằng 13% giá trị trung bình của sales.
+  + Mô hình đã giải thích được 69% sự biến động của doanh số dựa trên các đặc trưng đầu vào.
+
+> Mô hình này khá đáng tin cậy (RMSE không quá cao) nhưng khả năng dự đoán vẫn còn khá thấp.
+>>>>>>> e481cfb9c55448ab128a93fbe84afeea72410f47
 
 * Tối ưu hóa mô hình:
 
@@ -656,11 +778,16 @@ cat("R-squared: ", r_squared)
 ```
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 \
 Mô hình đã giải thích được 90% sự biến thiên của sales trong tập dữ liệu kiểm tra.
 =======
   + Mô hình đã giải thích được 90% sự biến thiên của sales trong tập dữ liệu kiểm tra.
 >>>>>>> 06c0f47f222796fce0b9b04b4325b030c9c55e49
+=======
+\
+Mô hình đã giải thích được 90% sự biến thiên của sales trong tập dữ liệu kiểm tra.
+>>>>>>> e481cfb9c55448ab128a93fbe84afeea72410f47
 
 * Tính toán lỗi RMSE (Root Mean Squared Error)
 
@@ -669,6 +796,7 @@ rmse <- sqrt(mean((predicted_sales - actual_values)^2))
 cat("RMSE: ", rmse)
 ```
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 \
 Trung bình, giá trị doanh số dự đoán và giá trị thực tế của nó chênh lệch nhau khoảng 9 đơn vị, bằng khoảng 8% giá trị trung bình của sales.
@@ -679,6 +807,12 @@ Trung bình, giá trị doanh số dự đoán và giá trị thực tế của 
 
 > Mô hình có R-squared cao khoảng 90% trên cả tập dữ liệu huấn luyện và tập kiểm tra, nên có thể kết luận rằng mô hình không bị overfitting và đạt hiệu quả dự đoán rất tốt. Bên cạnh đó, RMSE nhỏ cho thấy đây là mô hình rất đáng tin cậy để dự đoán doanh số.
 >>>>>>> 06c0f47f222796fce0b9b04b4325b030c9c55e49
+=======
+\
+Trung bình, giá trị doanh số dự đoán và giá trị thực tế của nó chênh lệch nhau khoảng 9 đơn vị, bằng khoảng 8% giá trị trung bình của sales.
+
+> Mô hình có R-squared cao khoảng 90% trên cả tập dữ liệu huấn luyện và tập kiểm tra, nên có thể kết luận rằng mô hình không bị overfitting và đạt hiệu quả dự đoán rất tốt. Bên cạnh đó, sai số dự đoán (RMSE) nhỏ cho thấy đây là mô hình rất đáng tin cậy để dự đoán doanh số.
+>>>>>>> e481cfb9c55448ab128a93fbe84afeea72410f47
 
 ## Kết luận
 
