@@ -640,16 +640,7 @@ ggplot(revenue_by_month, aes(x = order_month, y = revenue, group = 1, fill = ord
 
 ## 8.2. Dự đoán doanh thu trong 6 tháng tiếp theo bằng mô hình ARIMA: 
 
-* Mục tiêu của mô hình là dự báo doanh thu theo ngày của chuỗi doanh thu theo ngày(revenue_ts_date) từ dữ liệu được khai thác trong giai đoạn từ 01/01/2015 đến 20/12/2015 theo phương pháp ARIMA. 
-
-* Tạo chuỗi doanh thu theo ngày:
-
-```{r}
-revenue_ts_date<-ts(revenue_by_date$revenue, start = c(2015, 1), frequency = 365)
-# Kiểm tra chuỗi thời gian
-print(revenue_ts_date)
-
-```
+Mục tiêu của mô hình là dự báo doanh thu theo ngày của chuỗi doanh thu theo ngày(revenue_ts_date) từ dữ liệu được khai thác trong giai đoạn từ 01/01/2015 đến 20/12/2015 theo phương pháp ARIMA. 
 
 * Đầu tiên cần phải lựa chọn tham số phù hợp cho mô hình ARIMA (p,d,q)
  
@@ -677,7 +668,8 @@ Trục hoành là độ trễ, trục tung là giá trị của hệ số tự t
 pacf(revenue_by_date, main = "Biểu đồ PACF của doanh thu theo thời gian")
 ```
 
-> Tương tự như ACF, thông qua một biểu đồ PACF về giá trị các hệ số tương quan riêng phần tương ứng với các độ trễ khác nhau, chúng ta sẽ tìm ra được các bậc tự do phù hợp. Đó chính là vị trí mà giá trị của hệ số tương quan riêng phần nằm ngoài ngưỡng tin cậy 95% của giả thuyết hệ số tương quan riêng phần bằng 0.
+\
+Tương tự như ACF, thông qua một biểu đồ PACF về giá trị các hệ số tương quan riêng phần tương ứng với các độ trễ khác nhau, chúng ta sẽ tìm ra được các bậc tự do phù hợp. Đó chính là vị trí mà giá trị của hệ số tương quan riêng phần nằm ngoài ngưỡng tin cậy 95% của giả thuyết hệ số tương quan riêng phần bằng 0.
 
 * Một chuỗi thời gian dừng có các đặc tính thống kê như trung bình và phương sai không thay đổi theo thời gian, điều này rất quan trọng cho việc xây dựng các mô hình dự báo như ARIMA. Kiểm tra tính dừng bằng ADF test:
 
@@ -736,7 +728,7 @@ summary(model_212)
 ```{r}
 forecast_values <- forecast(auto_model, h = 180)
 # Hiển thị dự đoán
-head(forecast_values)
+print(forecast_values)
 ```
 
 ```{r}
@@ -744,11 +736,13 @@ plot(forecast_values, main = "Dự đoán doanh thu 6 tháng tiếp theo", xlab 
 lines(revenue_ts_date, col = "blue", lwd = 2)
 ```
 
+**Nhận xét:**
+
 1. Xu hướng dự báo: Doanh thu pizza trong 6 tháng dự báo có xu hướng ổn định, không tăng hoặc giảm mạnh theo thời gian. Điều này thể hiện qua đường trung bình (màu xanh), dao động quanh một mức giá trị cố định, không có sự thay đổi đáng kể về xu hướng. 
 
 2. Biến động của dữ liệu: Trong dữ liệu lịch sử (2015-2016), doanh thu pizza có những giai đoạn dao động lớn và xuất hiện các đỉnh cao đột ngột. Tuy nhiên, dự báo không phản ánh các biến động lớn đó, mà chỉ nhắm đến mức trung bình chung, làm giảm khả năng dự đoán các đột biến doanh thu (nếu có).
 
-3. Nhận xét về độ tin cậy: Với khoảng tin cậy khá rộng, đặc biệt ở cuối giai đoạn dự báo, điều này có thể ám chỉ rằng mô hình gặp khó khăn trong việc nắm bắt toàn bộ đặc điểm của dữ liệu, đặc biệt là những biến động bất thường trong lịch sử.
+3. Về độ tin cậy: Với khoảng tin cậy khá rộng, đặc biệt ở cuối giai đoạn dự báo, điều này có thể ám chỉ rằng mô hình gặp khó khăn trong việc nắm bắt toàn bộ đặc điểm của dữ liệu, đặc biệt là những biến động bất thường trong lịch sử.
 Do đó, dự đoán này nên được sử dụng thận trọng, đặc biệt trong việc ra quyết định dài hạn.
 
 4. Ổn định: Nếu xu hướng trung bình tiếp tục, doanh nghiệp có thể dự đoán doanh thu tương đối ổn định mà không cần phải đối mặt với biến động lớn trong ngắn hạn nhưng cũng có rủi ro tiềm ẩn: Các sự kiện bất thường (như khuyến mãi, nhu cầu mùa cao điểm) có thể không được phản ánh đầy đủ trong mô hình. Điều này cần được cân nhắc khi lập kế hoạch kinh doanh.
