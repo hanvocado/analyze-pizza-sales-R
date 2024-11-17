@@ -25,7 +25,6 @@ library(arules)
 library(arulesViz)
 library(car)
 library(randomForest)
-library(broom)
 ```
 
 # Phần 1. Tóm tắt:
@@ -271,7 +270,7 @@ head(sales_by_size)
 ggplot(sales_by_size, aes(x = "", y = total_sales, fill = pizza_size)) +
   geom_bar(stat = "identity") +
   coord_polar(theta = "y") +
-  labs(title = "Doanh thu theo kích cỡ pizza") +
+  labs(title = "doanh số theo kích cỡ pizza") +
   theme_void()
 ```
 
@@ -376,9 +375,9 @@ ggplot(sales_by_pizza_monthly, aes(x = order_month, y = total_sales, color = piz
 \
 Mỗi đường trên biểu đồ thể hiện sự biến động trong doanh số giữa các tháng của một pizza. Có nhiều bánh có sự biến động trong doanh số một khá đáng kể. 
 
-* Kiểm định sự chênh lệch trong doanh thu giữa các tháng của mỗi bánh có ý nghĩa thống kê không bằng Kruskal-Wallis
+* Kiểm định sự chênh lệch trong doanh số giữa các tháng của mỗi bánh có ý nghĩa thống kê không bằng Kruskal-Wallis
 
-Kruskal-Wallis là một kiểm định phi tham số, đặc biệt được dùng khi biến không có phân phối chuẩn, phù hợp để so sánh sự biến thiên của doanh thu giữa các tháng cho từng pizza.
+Kruskal-Wallis là một kiểm định phi tham số, đặc biệt được dùng khi biến không có phân phối chuẩn, phù hợp để so sánh sự biến thiên của doanh số giữa các tháng cho từng pizza.
 
 ```{r}
 kruskal_test <- sales_by_pizza_monthly %>%
@@ -391,13 +390,13 @@ kruskal_test <- sales_by_pizza_monthly %>%
 print(kruskal_test)
 ```
 
-Kết quả p-value khoảng 0.4 trong kiểm định Kruskal-Wallis có thể chỉ ra rằng không có sự khác biệt đáng kể trong doanh thu giữa các tháng đối với mỗi pizza, chứng tỏ doanh thu giữa các tháng tương đối ổn định.
+Kết quả p-value khoảng 0.4 trong kiểm định Kruskal-Wallis có thể chỉ ra rằng không có sự khác biệt đáng kể trong doanh số giữa các tháng đối với mỗi pizza, chứng tỏ doanh số giữa các tháng tương đối ổn định.
 
 # Phần 7. Dự đoán doanh số theo sản phẩm:
 
-Mục tiêu của phần này là xây dựng mô hình dự đoán doanh số của một bánh pizza với các đặc trưng của nó.
+Mục tiêu của phần này là xây dựng mô hình dự đoán doanh số trong một tháng của một bánh pizza cụ thể, tức là dự đoán xem cửa hàng bán được bao nhiêu bánh pizza đó bằng các đặc trưng của nó cùng với dữ liệu bán hàng trong quá khứ.
 
-* Tổng hợp dữ liệu chứa thông tin doanh số trong mỗi tháng
+* Tổng hợp dữ liệu chứa doanh số mỗi tháng của từng bánh pizza
 
 ```{r}
 sales_data <- df %>%  group_by(pizza_name, unit_price, pizza_size, pizza_category, order_month) %>% summarise(sales = sum(quantity))
@@ -405,11 +404,11 @@ sales_data <- df %>%  group_by(pizza_name, unit_price, pizza_size, pizza_categor
 dim(sales_data)
 summary(sales_data)
 ```
-Dữ liệu gồm 1091 quan sát, mỗi quan sát thể hiện doanh thu của một bánh với kích cỡ xác định (hoặc S hoặc M hoặc L hoặc XL hoặc XXL), đơn giá tương ứng, thuộc danh mục nào và doanh số trong một tháng cụ thể là bao nhiêu. 
+Dữ liệu gồm 1091 quan sát, mỗi quan sát thể hiện doanh số của một bánh với kích cỡ xác định (hoặc S hoặc M hoặc L hoặc XL hoặc XXL), đơn giá tương ứng, thuộc danh mục nào và doanh số trong một tháng cụ thể là bao nhiêu. 
 
-Biến sales là biến phụ thuộc mà ta xây dựng mô hình để dự đoán, nó dao động từ 1 đến 444, với trung bình là 115, đây sẽ là cơ sở để đánh giá mô hình.
+Biến sales là biến phụ thuộc mà ta xây dựng mô hình để dự đoán, dao động từ 1 đến 444, với trung bình là 115, đây sẽ là cơ sở để đánh giá mô hình.
 
-Các biến độc lập bao gồm: pizza_name, unit_price, pizza_size và pizza_category. Như đã kiểm định ở trên doanh thu giữa các tháng của một bánh pizza tương đối ổn định, nên order_month không là biến độc lập.
+Các biến độc lập bao gồm: pizza_name, unit_price, pizza_size và pizza_category. Như đã kiểm định ở trên doanh số giữa các tháng của một bánh pizza tương đối ổn định, nên không chọn order_month làm biến độc lập.
 
 * Trực quan hóa mối quan hệ giữa doanh số và giá cùng với kích cỡ và danh mục bánh.
 
@@ -421,7 +420,7 @@ sales_data %>%
 
 > Biểu đồ cho thấy tác động của giá bán lên sales khác nhau đối với các cỡ bánh khác nhau và các loại bánh khác nhau. Cụ thể như bánh size S giá thấp (~10) có doanh số cao hơn rất nhiều so với bánh size S giá trên 20 USD. Và cùng ở khoảng giá 20 USD nhưng doanh số của các danh mục chênh lệch nhau rất rõ rệt. Vì vậy, ngoài 4 biến độc lập đã nêu thì em sẽ thêm sự tác giữa unit_price và pizza_size, giữa unit_price và pizza_category vào mô hình dự đoán.
 
-## 7.1. Dự đoán doanh thu của sản phẩm bằng hồi quy tuyến tính
+## 7.1. Dự đoán doanh số của sản phẩm bằng hồi quy tuyến tính
 
 ```{r}
 lm_sales_model <- lm(sales ~ pizza_name + unit_price * (pizza_size + pizza_category), data = sales_data)
@@ -452,9 +451,9 @@ Thông tin về mô hình:
   + Mô hình bao gồm 500 cây quyết định. Số cây càng lớn thì mô hình càng trở nên ổn định và chính xác hơn, nhưng cũng sẽ tốn thời gian huấn luyện và yêu cầu bộ nhớ cao hơn.
   + Số biến được thử ở mỗi lẫn phân tách là 1, nghĩa là với mỗi lần phân chia trong các cây, thuật toán sẽ ngẫu nhiên chọn 1 biến (trong tổng số 3 biến: unit_price, pizza_size, và pizza_category) và tính điểm phân chia tốt nhất dựa trên chúng.
   + Giá trị trung bình bình phương phần dư là 231.1445, cho thấy sai lệch trung bình giữa các giá trị dự đoán và giá trị thực tế của doanh số là khoảng 15 đơn vị, bằng 13% giá trị trung bình của sales.
-  + Mô hình đã giải thích được 69.73% sự biến động của doanh số dựa trên các đặc trưng đầu vào.
+  + Mô hình đã giải thích được 69% sự biến động của doanh số dựa trên các đặc trưng đầu vào.
 
-> Mô hình khá đáng tin cậy do RMSE thấp và phù hợp với bài toán với khả năng dự đoán ổn (69.7%) nhưng vẫn còn có thể cải thiện.
+> Mô hình này khá đáng tin cậy (RMSE không quá cao) nhưng khả năng dự đoán vẫn còn khá thấp (69%).
 
 * Tối ưu hóa mô hình:
 
@@ -503,7 +502,7 @@ r_squared <- 1 - (ss_residual / ss_total)
 cat("R-squared:", r_squared)
 ```
 
-  + Mô hình đã giải thích được 90% biến thiên của sales trên tập kiểm tra.
+  + Mô hình đã giải thích được 90% sự biến thiên của sales trong tập dữ liệu kiểm tra.
 
 * Tính toán lỗi RMSE (Root Mean Squared Error)
 
@@ -512,9 +511,9 @@ rmse <- sqrt(mean((predicted_sales - actual_values)^2))
 cat("RMSE", rmse)
 ```
 
-  + Giá trị dự đoán và giá trị thực tế của doanh thu chênh lệch nhau khoảng 9 đơn vị, bằng khoảng 8% giá trị trung bình của sales.
+  + Trung bình, giá trị doanh số dự đoán và giá trị thực tế của nó chênh lệch nhau khoảng 9 đơn vị, bằng khoảng 8% giá trị trung bình của sales.
 
-> Tập huấn luyện và tập kiểm tra đều có R-squared cao khoảng 90%, nên có thể nói rằng mô hình không bị overfitting và đạt hiệu quả dự đoán rất tốt và đáng tin cậy. Mô hình phù hợp cho bài toán và có khả năng dự đoán chính xác cao.
+> Mô hình có R-squared cao khoảng 90% trên cả tập dữ liệu huấn luyện và tập kiểm tra, nên có thể kết luận rằng mô hình không bị overfitting và đạt hiệu quả dự đoán rất tốt. Bên cạnh đó, RMSE nhỏ cho thấy đây là mô hình rất đáng tin cậy để dự đoán doanh số.
 
 ## Kết luận
 
