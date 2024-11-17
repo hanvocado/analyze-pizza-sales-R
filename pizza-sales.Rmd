@@ -289,7 +289,7 @@ head(sales_by_size)
 ggplot(sales_by_size, aes(x = "", y = total_sales, fill = pizza_size)) +
   geom_bar(stat = "identity") +
   coord_polar(theta = "y") +
-  labs(title = "doanh số theo kích cỡ pizza") +
+  labs(title = "Sales by sizes in 2015") +
   theme_void()
 ```
 
@@ -314,10 +314,8 @@ sales_by_category
 ```{r}
 ggplot(sales_by_category, aes(x = pizza_category, y = total_sales, fill = order_month)) +
   geom_col() +
-  labs(title = "Doanh số năm 2015 của từng danh mục bánh",
-       x = "Danh mục",
-       y = "Doanh số",
-       fill = "Tháng") +
+  labs(title = "Sales by category in 2015",
+       fill = "Month") +
   theme_minimal()
 ```
 
@@ -328,13 +326,16 @@ ggplot(sales_by_category, aes(x = pizza_category, y = total_sales, fill = order_
 
 #### Doanh số của từng bánh pizza trong cả năm 2015
 
+* Số bánh pizza cửa hàng kinh doanh
+
 ```{r}
 sales_by_pizza <- df %>%
   group_by(pizza_name) %>% 
   summarise(total_sales = sum(quantity))
 
-sprintf("Số bánh pizza cửa hàng kinh doanh: %s", length(sales_by_pizza$pizza_name))
+print(length(sales_by_pizza$pizza_name))
 ```
+Cửa hàng kinh doanh 32 bánh pizza khác nhau.
 
 * Trực quan hóa doanh số của từng bánh pizza trong một năm
 
@@ -342,8 +343,8 @@ sprintf("Số bánh pizza cửa hàng kinh doanh: %s", length(sales_by_pizza$piz
 sales_by_pizza %>%
   ggplot(aes(x = total_sales, y = reorder(pizza_name, total_sales))) +
   geom_col(color = "pink", fill = "pink", width = 0.5) +
-  labs(title = "Tổng doanh số năm 2015",
-       x = "Số lượng",
+  labs(title = "Sales by pizza in 2015",
+       x = "Quantity",
        y = "Pizza") +
   theme_minimal()
 ```
@@ -370,7 +371,7 @@ df %>% select(pizza_name, pizza_size) %>% unique() %>%
   merge(sales_by_pizza) %>% ggplot(aes(x = no_variants, y = total_sales)) + geom_point()
 ```
 
-* Không có mối quan hệ tương quan giữa no_variants và total_sales, nghĩa là độ đa dạng của một bánh pizza không ảnh hưởng tới doanh số của nó.
+> Không có mối quan hệ tương quan giữa no_variants và total_sales, nghĩa là độ đa dạng của một bánh pizza không ảnh hưởng tới doanh số của nó.
 
 #### Doanh số của từng bánh pizza trong mỗi tháng
 
@@ -382,34 +383,34 @@ sales_by_pizza_monthly <- df %>%
 ggplot(sales_by_pizza_monthly, aes(x = order_month, y = total_sales, color = pizza_name, group = pizza_name)) +
   geom_line() +
   geom_point() +
-  labs(title = "Doanh số của bánh pizza qua các tháng",
-       x = "Tháng",
-       y = "Doanh số ",
-       color = "Tên Pizza") +
+  labs(title = "Pizza's monthly sales in 2015",
+       x = "Month",
+       y = "Quantity",
+       color = "Pizza Name") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   guides(color = "none")
 ```
-
 \
-Mỗi đường trên biểu đồ thể hiện sự biến động trong doanh số giữa các tháng của một pizza. Có nhiều bánh có sự biến động trong doanh số một khá đáng kể. 
+Mỗi đường trên biểu đồ thể hiện sự biến động trong doanh số giữa các tháng của một pizza. Có một số bánh có sự biến động trong doanh số một cách đáng chú ý. 
 
-* Kiểm định sự chênh lệch trong doanh số giữa các tháng của mỗi bánh có ý nghĩa thống kê không bằng Kruskal-Wallis
+###### Kiểm định doanh số của từng pizza có khác biệt đáng kể giữa các tháng hay không bằng Kruskal-Wallis
 
-Kruskal-Wallis là một kiểm định phi tham số, đặc biệt được dùng khi biến không có phân phối chuẩn, phù hợp để so sánh sự biến thiên của doanh số giữa các tháng cho từng pizza.
+Kiểm định Kruskal-Wallis là một phương pháp thống kê phi tham số dùng để so sánh ba nhóm dữ liệu trở lên nhằm xác định xem có sự khác biệt đáng kể nào giữa các nhóm này hay không. Đây là một lựa chọn thay thế cho phân tích phương sai một chiều (ANOVA) khi dữ liệu không tuân theo phân phối chuẩn, phù hợp để kiểm tra sự biến động doanh số (numerical) của một pizza qua các tháng (order_month) có ý nghĩa hay không.
+\
+Trong sales_by_pizza_monthly, mỗi pizza chỉ có một quan sát cho một tháng nên kiểm định Kruskal-Wallis sẽ không có đủ thông tin để so sánh và phát hiện sự khác biệt có ý nghĩa. Do đó em sẽ tổng hợp doanh số của từng pizza theo ngày rồi thực hiện kiểm định cho từng pizza
 
 ```{r}
-kruskal_test <- sales_by_pizza_monthly %>%
+sales_by_pizza_daily <- df %>% group_by(pizza_name, order_date, order_month) %>% summarise(sales = sum(quantity), .groups = 'drop')
+
+kruskal_test <- sales_by_pizza_daily %>%
   group_by(pizza_name) %>%
-  do({
-    kruskal_result <- kruskal.test(total_sales ~ order_month, data = .)
-    data.frame(pizza_name = unique(.$pizza_name), p_value = kruskal_result$p.value)
-  })
+  summarize(p_value = kruskal.test(sales ~ order_month)$p.value)
 
 print(kruskal_test)
 ```
 
-Kết quả p-value khoảng 0.4 trong kiểm định Kruskal-Wallis có thể chỉ ra rằng không có sự khác biệt đáng kể trong doanh số giữa các tháng đối với mỗi pizza, chứng tỏ doanh số giữa các tháng tương đối ổn định.
+Kết quả không có p-value nào có giá trị nhỏ hơn 0.01, nên ta chấp nhận giả thuyết không và kết luận rằng không có sự khác biệt đáng kể trong doanh số giữa các tháng đối với mỗi pizza, hay nói cách khác, doanh số của mỗi pizza tương đối ổn định giữa các tháng.
 
 ## 6.4. Phân tích doanh thu theo thời gian:
 
