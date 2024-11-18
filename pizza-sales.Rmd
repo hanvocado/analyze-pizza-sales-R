@@ -511,7 +511,7 @@ Mỗi đường trên biểu đồ thể hiện sự biến động trong doanh 
 
 ##### Kiểm định doanh số của từng pizza có khác biệt đáng kể giữa các tháng hay không bằng Kruskal-Wallis
 
-Kiểm định Kruskal-Wallis là một phương pháp thống kê phi tham số dùng để so sánh ba nhóm dữ liệu trở lên nhằm xác định xem có sự khác biệt đáng kể nào giữa các nhóm này hay không. Đây là một lựa chọn thay thế cho phân tích phương sai một chiều (ANOVA) khi dữ liệu không tuân theo phân phối chuẩn, phù hợp để kiểm tra sự biến động doanh số (numerical) của một pizza qua các tháng (order_month) có ý nghĩa hay không.
+Kiểm định Kruskal-Wallis là một phương pháp thống kê phi tham số dùng để so sánh ba nhóm dữ liệu trở lên nhằm xác định xem có sự khác biệt đáng kể nào giữa các nhóm này hay không. Đây là một lựa chọn thay thế cho phân tích phương sai một chiều (ANOVA) khi dữ liệu không tuân theo phân phối chuẩn, phù hợp để kiểm tra sự biến động doanh số của một pizza qua các tháng có ý nghĩa hay không.
 \
 Trong sales_by_pizza_monthly, mỗi pizza chỉ có một quan sát cho một tháng nên kiểm định Kruskal-Wallis sẽ không có đủ thông tin để so sánh và phát hiện sự khác biệt có ý nghĩa. Do đó em sẽ tổng hợp doanh số của từng pizza theo ngày rồi thực hiện kiểm định cho từng pizza
 
@@ -525,7 +525,7 @@ kruskal_test <- sales_by_pizza_daily %>%
 print(kruskal_test)
 ```
 
-Kết quả không có p-value nào có giá trị nhỏ hơn 0.01, nên ta chấp nhận giả thuyết không và kết luận rằng không có sự khác biệt đáng kể trong doanh số giữa các tháng đối với mỗi pizza, hay nói cách khác, doanh số của mỗi pizza tương đối ổn định giữa các tháng.
+Kết quả không có p-value nào có giá trị nhỏ hơn 0.01, nên ta chấp nhận giả thuyết không và kết luận rằng không có sự khác biệt đáng kể trong doanh số giữa các tháng đối với mỗi pizza, hay nói cách khác, doanh số của mỗi pizza tương đối ổn định giữa các tháng trong năm 2015.
 
 ## 6.5. Phân tích doanh thu theo thời gian:
 
@@ -630,7 +630,7 @@ Biểu đồ đường cho thấy doanh thu giữa các tháng về cơ bản kh
 
 # Phần 7. Dự đoán doanh số theo sản phẩm:
 
-Mục tiêu của phần này là xây dựng mô hình dự đoán doanh số trong một tháng của một bánh pizza cụ thể, tức là dự đoán xem cửa hàng bán được bao nhiêu bánh pizza đó bằng các đặc trưng của nó cùng với dữ liệu bán hàng trong quá khứ.
+Mục tiêu của phần này là xây dựng mô hình dự đoán doanh số trong một tháng của một bánh pizza cụ thể, tức là dự đoán xem cửa hàng bán được bao nhiêu bánh pizza đó bằng các đặc trưng của nó cùng với dữ liệu bán hàng trong quá khứ. Em lựa chọn sử dụng hai mô hình là Linear Regression và Random Forest nhằm tận dụng những ưu điểm riêng của mỗi phương pháp và đánh giá hiệu quả của chúng trong bối cảnh dữ liệu hiện có.
 
 * Tổng hợp dữ liệu chứa doanh số mỗi tháng của từng bánh pizza
 
@@ -660,6 +660,8 @@ Biểu đồ cho thấy tác động của giá bán lên sales khác nhau đố
 
 ## 7.1. Dự đoán doanh số của sản phẩm bằng hồi quy tuyến tính
 
+Hồi quy tuyến tính (Linear Regression) là mô hình thống kê đơn giản và dễ hiểu, dựa trên giả định về mối quan hệ tuyến tính giữa biến độc lập (biến đầu vào) và biến phụ thuộc (biến mục tiêu). Lý do em chọn mô hình này để dự đoán doanh số của sản phẩm vì nó đơn giản và dễ diễn giải, giúp em bước đầu hiểu rõ mức độ và hướng ảnh hưởng của từng biến độc lập đến doanh số sản phẩm. Hơn nữa, hồi quy tuyến tính là một mô hình nền tảng và thường được dùng như tiêu chuẩn so sánh cho các mô hình phức tạp hơn. Khi dữ liệu có dạng tuyến tính hoặc gần tuyến tính, Linear Regression cũng có khả năng mang lại kết quả dự đoán chính xác với chi phí tính toán thấp.
+
 ```{r}
 lm_sales_model <- lm(sales ~ pizza_name + unit_price * (pizza_size + pizza_category), data = sales_data)
 summary(lm_sales_model)
@@ -670,6 +672,8 @@ F-statistic bằng 55.94 với p-value < 2.2e-16, cho thấy rằng **mô hình 
 Multiple R-squared bằng 0.6862 và Adjusted R-squared bằng 0.6739 cho thấy **mô hình giải thích khoảng 67% sự biến động của doanh số trong tập dữ liệu**. Mặc dù không quá cao, giá trị này vẫn cho thấy mô hình có thể giải thích một phần đáng kể sự biến động doanh số trong tập dữ liệu.
 
 ## 7.2. Dự đoán doanh số theo sản phẩm bằng random forest
+
+Random Forest là một mô hình học máy có giám sát (supervised learning), thường được dùng khi các quan hệ giữa các biến đầu vào và biến mục tiêu là phức tạp hoặc không tuyến tính. Em chọn Random Forest để so sánh với Linear Regression, vì mô hình này có khả năng xử lý và học những mối quan hệ phức tạp giữa các yếu tố ảnh hưởng đến doanh số của sản phẩm như đơn giá, kích cỡ,... mà mô hình tuyến tính không thể nắm bắt.
 
 * Chia tập dữ liệu thành 80% cho huấn luyện và 20% cho kiểm tra.
 
@@ -765,7 +769,7 @@ Trung bình, giá trị doanh số dự đoán và giá trị thực tế của 
 
 ## Kết luận
 
-Mô hình random forest sau khi được tối ưu đã dự đoán doanh số của sản phẩm tốt hơn rất nhiều so với mô hình hồi quy tuyến tính vì nó có khả năng nắm bắt các mối quan hệ phi tuyến tính và tương tác phức tạp giữa các biến độc lập pizza_name, unit_price, pizza_size, pizza_category mà mô hình hồi quy tuyến tính chưa mô tả được. Mô hình random forest còn có khả năng xử lý hiệu quả biến phân loại nhiều mức một cách tự nhiên khi xây dựng các cây quyết định, trong khi đó mô hình hồi quy tuyến tính sẽ dùng kỹ thuật one hot encoding để tạo biến giả, tăng độ phức tạp của mô hình và có thể gây ra vấn đề đa cộng tuyến. Bên cạnh đó, nó ít bị ảnh hưởng bởi giá trị ngoại lai (outliers) nhờ lấy trung bình của nhiều cây quyết định. Hơn nữa, random forest không yêu cầu các giả định phân phối nghiêm ngặt, phù hợp với tính chất dữ liệu trong bài toán này.
+Mô hình random forest sau khi được tối ưu đã dự đoán doanh số của sản phẩm tốt hơn rất nhiều so với mô hình hồi quy tuyến tính vì nó có khả năng nắm bắt các mối quan hệ phi tuyến tính và tương tác phức tạp giữa các biến độc lập mà mô hình hồi quy tuyến tính chưa mô tả được. Mô hình random forest còn có khả năng xử lý hiệu quả biến phân loại nhiều mức một cách tự nhiên khi xây dựng các cây quyết định, trong khi đó mô hình hồi quy tuyến tính sẽ dùng kỹ thuật one hot encoding để tạo biến giả, tăng độ phức tạp của mô hình và có thể gây ra vấn đề đa cộng tuyến. Bên cạnh đó, random forest cho bài toán hồi quy ít bị ảnh hưởng bởi giá trị ngoại lai (outliers) nhờ lấy trung bình của nhiều cây quyết định. Hơn nữa, random forest không yêu cầu các giả định phân phối nghiêm ngặt, phù hợp với tính chất dữ liệu trong bài toán này.
 
 # Phần 8. Dự đoán doanh thu trong 6 tháng tiếp theo bằng mô hình ARIMA: 
 
