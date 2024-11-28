@@ -33,9 +33,15 @@ library(forecast)
 library(wordcloud)
 library(tm)
 library(RColorBrewer)
+library(xgboost)
+library(caret)
+library(gbm)
+library(ParBayesianOptimization)
 ```
 
 # Phần 1. Tóm tắt
+
+  Nghiên cứu này dùng ngôn ngữ R để phân tích và xây dựng mô hình dự đoán trên tập dữ liệu bán hàng pizza trong quá khứ. Các biểu đồ Histogram, Boxplot, Line, Bar, Pie, Point, và WordCloud được ứng dụng để trực quan hóa xu hướng trong nhu cầu pizza theo thời gian, tìm ra các thành phần nguyên liệu được thường xuyên sử dụng, thể hiện doanh số, doanh thu của cửa hàng... Đối với doanh số (số lượng pizza bán ra), kiểm định Kruskal-Wallis được dùng để kiểm tra sự biến động doanh số của từng pizza giữa các tháng có đáng kể không. Sau đó các mô hình khác nhau đã được sử dụng để thực hiện dự đoán doanh số: Mô hình Hồi quy tuyến tính được chọn do tính đơn giản và khả năng giải thích dễ dàng, trong khi Rừng ngẫu nhiên và XGBoost được chọn để xử lý các mối quan hệ phức tạp giữa các biến độc lập. Bên cạnh đó, mô hình ARIMA được dùng để dự đoán doanh thu cho 6 tháng tiếp theo.
 
 # Phần 2. Giới thiệu
     
@@ -70,6 +76,32 @@ head(sales_df)
 ```{r}
 str(sales_df)
 ```
+
+Tập dữ liệu Pizza Sales có tổng cộng 48,620 dòng và 12 cột, cung cấp thông tin chi tiết về các đơn hàng bán pizza. Mỗi dòng tương ứng với một mục trong đơn hàng, được xác định bởi order_details_id, và thuộc về một đơn hàng nhận diện qua order_id. Dữ liệu bao gồm các thông tin quan trọng như ngày và giờ đặt hàng, loại pizza, kích cỡ, số lượng, đơn giá... Cụ thể về thông tin của 12 biến và kiểu dữ liệu tương ứng như sau:
+
+- order_details_id: Kiểu số (numeric). Đây là mã định danh duy nhất cho từng dòng trong tập dữ liệu, đại diện cho mỗi chi tiết đơn hàng.
+
+- order_id: Kiểu số. Đây là mã định danh của mỗi đơn hàng. Nhiều dòng có order_id giống nhau khi chúng cùng thuộc về một đơn hàng.
+
+- pizza_id: Kiểu chuỗi ký tự (character). Đây là mã nhận diện từng pizza.
+
+- quantity: Kiểu số, cho biết số lượng pizza được đặt trong một chi tiết đơn hàng.
+
+- order_date: có kiểu POSIXct, dữ liệu được lưu dưới dạng số nguyên biểu thị số giây kể từ epoch time (01/01/1970), và được hiển thị theo dưới dạng yyyy-mm-dd, cho biết ngày đặt hàng.
+
+- order_time: tương tự như order_date, biến này có kiểu POSIXct, cho biết thời gian đặt hàng. Nhưng dữ liệu có dạng YYYY-mm-dd hh:mm:ss, trong đó ngày tháng năm là không có nghĩa nên cần xử lý trước khi phân tích.
+
+- unit_price: Kiểu số, cho biết đơn giá của một chiếc bánh pizza cụ thể.
+
+- total_price: Kiểu số, cho biết tổng số tiền của dòng chi tiết đơn hàng đó, bằng unit_price × quantity.
+
+- pizza_size: Kiểu chuỗi ký tự, cho biết kích cỡ pizza.
+
+- pizza_category: Kiểu chuỗi ký tự, cho biết pizza được mua thuộc danh mục nào.
+
+- pizza_ingredients: Kiểu chuỗi ký tự, cho biết các nguyên liệu làm nên pizza đó.
+
+- pizza_name: Kiểu chuỗi ký tự, cho biết tên của pizza.
 
 # Phần 5. Tiền xử lý dữ liệu
 
@@ -119,6 +151,7 @@ head(df)
 #### Tạo cột order_weekday
 
 Thêm cột mới tên order_weekday có kiểu factor cho biết khách hàng đã đặt đơn vào thứ mấy.
+
 ```{r}
 Sys.setlocale("LC_ALL", "C")
 df <- mutate(df, order_weekday = weekdays(order_date))
@@ -128,6 +161,7 @@ head(df)
 ```
 
 #### Tạo cột order_month
+
 Thêm cột mới tên order_month có kiểu factor cho biết khách hàng đã đặt đơn vào tháng nào.
 
 ```{r}
@@ -140,6 +174,7 @@ head(df)
 ```
 
 #### Tạo data frame chứa dữ liệu của từng đơn đặt hàng
+
 ```{r}
 by_order_df <- df %>% group_by(order_id) %>% 
   summarise(quantity = sum(quantity), order_date = order_date[1], total_price = sum(total_price), order_hour = order_hour[1], order_weekday = order_weekday[1], order_month = order_month[1]) %>% ungroup()
@@ -157,7 +192,7 @@ by_order_df %>% count()
 ```{r}
 by_order_df %>% summarise(no_pizzas = sum(quantity), total_revenue = sum(total_price))
 ```
-Trong năm 2015, cửa hàng có 21350 đơn đặt hàng, bán ra tổng 49574 chiến bánh pizza với tổng doanh thu là 817860 USD. 
+Trong năm 2015, cửa hàng có 21350 đơn đặt hàng, bán ra tổng 49574 chiếc bánh pizza với tổng doanh thu là 817860 USD. 
 
 ```{r}
 by_order_df %>% select(quantity, total_price) %>% summary()
@@ -767,9 +802,250 @@ Trung bình, giá trị doanh số dự đoán và giá trị thực tế của 
 
 > Mô hình có R-squared cao khoảng 90% trên cả tập dữ liệu huấn luyện và tập kiểm tra, nên có thể kết luận rằng mô hình không bị overfitting và đạt hiệu quả dự đoán rất tốt. Bên cạnh đó, sai số dự đoán (RMSE) nhỏ cho thấy đây là mô hình rất đáng tin cậy để dự đoán doanh số.
 
-## Kết luận
+## 7.3 Dự đoán doanh số bằng mô hình XGBoost
 
-Mô hình random forest sau khi được tối ưu đã dự đoán doanh số của sản phẩm tốt hơn rất nhiều so với mô hình hồi quy tuyến tính vì nó có khả năng nắm bắt các mối quan hệ phi tuyến tính và tương tác phức tạp giữa các biến độc lập mà mô hình hồi quy tuyến tính chưa mô tả được. Mô hình random forest còn có khả năng xử lý hiệu quả biến phân loại nhiều mức một cách tự nhiên khi xây dựng các cây quyết định, trong khi đó mô hình hồi quy tuyến tính sẽ dùng kỹ thuật one hot encoding để tạo biến giả, tăng độ phức tạp của mô hình và có thể gây ra vấn đề đa cộng tuyến. Bên cạnh đó, random forest cho bài toán hồi quy ít bị ảnh hưởng bởi giá trị ngoại lai (outliers) nhờ lấy trung bình của nhiều cây quyết định. Hơn nữa, random forest không yêu cầu các giả định phân phối nghiêm ngặt, phù hợp với tính chất dữ liệu trong bài toán này.
+Ở mô hình Random Forest xây dựng các cây quyết định độc lập song song và kết hợp chúng bằng trung bình hoặc biểu quyết đa số, dẫn đến mô hình ít nhạy cảm hơn với lỗi nhưng cũng có thể bỏ qua các mẫu quan trọng. Boosting, với khả năng học có trọng số, có xu hướng phù hợp hơn để nắm bắt các mối quan hệ phi tuyến phức tạp giữa các đặc trưng và mục tiêu, đặc biệt khi dữ liệu có nhiễu hoặc cần tối ưu hóa sâu hơn.
+
+* Tạo dataframe phù hợp và thực hiện tiền xử lý để phù hợp với yêu cầu của mô hình GBM.
+
+```{r}
+ sale_data <- df %>%
+  mutate(order_month = floor_date(as.Date(order_date), "month")) %>% # ngay dau cua thang
+  group_by(pizza_name, unit_price, pizza_size, pizza_category, order_month) %>%
+  summarise(sales = sum(quantity), .groups = 'drop')
+sale_data
+```
+
+* Lý do sử dụng mô hình XGboost:
+
+Vì ưu điểm nổi bật của XGBoost nằm ở khả năng tự động xử lý các biến phân loại (sau khi được mã hóa), khả năng học phi tuyến tính từ các đặc trưng, và tính năng điều chỉnh quá trình huấn luyện thông qua các tham số như learning rate (eta), max_depth, và subsampling. Trong bài toán này, XGBoost không chỉ sử dụng các đặc trưng đơn giản như giá bánh và thời gian, mà còn tận dụng các biến phân loại như loại bánh, kích thước, và danh mục, giúp mô hình khai thác được nhiều mối quan hệ tiềm ẩn trong dữ liệu.
+
+```{r}
+# Biến đổi cột thời gian và mã hóa biến phân loại
+sale_data <- sale_data %>%
+  mutate(
+    order_month_num = as.numeric(order_month), # Chuyển order_month thành số
+    pizza_name = as.factor(pizza_name)
+  )
+
+# Chuyển đổi biến phân loại thành dạng số
+sale_data$encoded_name <- as.numeric(sale_data$pizza_name)
+sale_data$encoded_size <- as.numeric(sale_data$pizza_size)
+sale_data$encoded_category <- as.numeric(sale_data$pizza_category)
+
+# Tạo tập dữ liệu đầu vào (features) và đầu ra (target)
+features <- sale_data %>%
+  select(order_month_num, unit_price, encoded_name, encoded_size, encoded_category)
+
+target <- sale_data$sales
+
+summary(sales_data)
+```
+
+
+* Chuẩn bị dữ liệu cho mô hình XGBoost
+
+```{r}
+#Chia tập dữ liệu thành train và test
+set.seed(123)
+train_index <- createDataPartition(target, p = 0.8, list = FALSE)
+train_features <- as.matrix(features[train_index, ])
+test_features <- as.matrix(features[-train_index, ])
+train_target <- target[train_index]
+test_target <- target[-train_index]
+
+dtrain <- xgb.DMatrix(data = train_features, label = train_target)
+dtest <- xgb.DMatrix(data = test_features, label = test_target)
+```
+
+* Chuẩn bị tham số cho mô hình XGboost
+
+```{r}
+set.seed(123)
+params <- list(
+  objective = "reg:squarederror", # Hồi quy
+  eta = 0.1,                      # Learning rate 0.1
+  max_depth = 6                   # Độ sâu cây 6 
+)
+```
+
+* Huấn luyện mô hình XGBoost
+
+```{r}
+xgb_model <- xgboost(
+  data = dtrain,
+  params = params,
+  nrounds = 100,   
+  verbose = 0
+)
+
+# Dự đoán và đánh giá
+preds <- predict(xgb_model, dtest)
+
+```
+
+* Kiểm tra độ chính xác của mô hình 
+
+```{r}
+
+# Tạo DataFrame từ dữ liệu thực tế và dự đoán
+comparison <- data.frame(
+  Actual = test_target,
+  Predicted = preds
+)
+
+# Tính toán các giá trị cần thiết
+ss_res <- sum((comparison$Actual - comparison$Predicted)^2) # SS_res
+ss_tot <- sum((comparison$Actual - mean(comparison$Actual))^2) # SS_tot
+
+# Tính RMSE
+rmse <- sqrt(mean((preds - test_target)^2))
+cat("RMSE:", rmse, "\n")
+
+# Tính R-squared
+r_squared <- 1 - (ss_res / ss_tot)
+cat("R-squared:", r_squared, "\n")
+
+comparison
+```
+
+**Tối ưu hóa mô hình**
+
+Em sẽ sử dụng Bayesian Optimization (Tối ưu hóa Bayes) để tìm kiếm giá trị tối ưu cho hai tham số lambda (L2 regularization) và alpha (L1 regularization) trong mô hình XGBoost.
+
++ lambda (λ) và alpha (α) là hai tham số quan trọng liên quan đến việc điều chỉnh độ phức tạp của mô hình, đặc biệt là trong quá trình regularization (chuẩn hóa)
+
++ Tạo hàm tối ưu hóa xgb_bayes ( Đây là hàm mục tiêu được sử dụng bởi Bayesian Optimization để đánh giá hiệu quả của từng tổ hợp giá trị tham số.)
+
+```{r}
+xgb_bayes <- function(lambda, alpha) {
+  params <- list(
+    objective = "reg:squarederror",
+    eta = 0.1,
+    max_depth = 6,
+    lambda = lambda,
+    alpha = alpha
+  )
+  model <- xgb.train(
+    params = params,
+    data = dtrain,
+    nrounds = 100,
+    watchlist = list(val = dtest),
+    early_stopping_rounds = 10,
+    verbose = 0
+  )
+  list(Score = -model$best_score, Pred = model$best_iteration)
+}
+```
+
++  Chỉ định phạm vi giá trị có thể thử nghiệm cho các tham số lambda & alpha.
+```{r}
+bounds <- list(
+  lambda = c(0, 10),
+  alpha = c(0, 10)
+)
+
+```
+
++ Gọi hàm tối ưu hóa bayesOpt
+
+```{r}
+set.seed(123)
+opt <- bayesOpt(
+  FUN = xgb_bayes,
+  bounds = bounds,
+  initPoints = 5,
+  iters.n = 10,
+  verbose = 0
+)
+
+opt$scoreSummary
+
+```
+**Lấy dòng có Score tốt nhất** 
+```{r}
+
+best_row <- opt$scoreSummary[which.max(opt$scoreSummary$Score), ]
+print(best_row)
+
+```
+ 
+ **Tạo danh sách tham số đã tối ưu nhất**
+```{r}
+best_lambda <- best_row$lambda
+best_alpha <- best_row$alpha
+# Thiết lập Grid Search với L1 (alpha) và L2 (lambda)
+# Tạo danh sách tham số
+params <- list(
+  objective = "reg:squarederror",
+  eta = 0.1,
+  max_depth = 6,
+  gamma = 1,
+  colsample_bytree = 0.8,
+  subsample = 0.9,
+  min_child_weight = 1,
+  alpha = best_alpha,           # L1 regularization
+  lambda = best_lambda           # L2 regularization
+)
+```
+**Tìm nround tốt nhất bằng cross-validation**
+```{r}
+# Thực hiện Cross-Validation
+cv_results <- xgb.cv(
+  params = params,
+  data = train_features,
+  label = train_target,
+  nrounds = 500,
+  nfold = 5,
+  metrics = "rmse",
+  verbose = 0,
+  early_stopping_rounds = 10
+)
+
+# Số cây tốt nhất
+best_nrounds <- cv_results$best_iteration
+best_nrounds
+```
+
+**Huấn luyện mô hình cuối cùng**
+
+```{r}
+
+xgb_model_tuned <- xgboost(
+  params = params,
+  data = train_features,
+  label = train_target,
+  nrounds = best_nrounds,
+  verbose = 0,
+
+)
+```
+
+**Thưc hiện dự đoán và kkiểm tra độ chính xác**
+```{r}
+# Dự đoán trên tập kiểm tra
+predictions <- predict(
+  xgb_model_tuned,
+  newdata = test_features
+)
+
+# Tính RMSE
+rmse <- sqrt(mean((test_target - predictions)^2))
+cat("RMSE:", rmse, "\n")
+
+# Tính R-squared
+ss_res <- sum((test_target - predictions)^2)
+ss_tot <- sum((test_target - mean(test_target))^2)
+r_squared <- 1 - (ss_res / ss_tot)
+cat("R-squared:", r_squared, "\n")
+
+
+```
+
+## 7.4. Kết luận
+
+Trong bài toán này, mô hình hồi quy tuyến tính có độ chính xác thấp nhất (~67%), trong khi hai mô hình Random forest và XGBoost đều cho sai số dự đoán nhỏ tương đương nhau và đều có độ chính xác cao khoảng 90%. Vì vậy, em chọn random forest là mô hình cuối cùng dùng để dự đoán doanh số của sản phẩm. Quyết định này là do khi hai mô hình có hiệu suất tương đương thì nên chọn mô hình đơn giản hơn để dễ hiểu, bảo trì, triển khai, ít nguy cơ overfitting và yêu cầu ít tài nguyên tính toán hơn. Trong bài toán này, Random forest có khả năng tổng quát hóa tốt hơn mà không cần điều chỉnh quá nhiều, và các cây quyết định của nó được xây dựng một cách độc lập với nhau nên có tốc độ huấn luyện nhanh và ít nhạy cảm với nhiễu trong tập dữ liệu hơn XGBoost.\
+Ngoài ra, mô hình random forest sau khi được tối ưu đã dự đoán doanh số của sản phẩm tốt hơn rất nhiều so với mô hình hồi quy tuyến tính vì nó có khả năng nắm bắt các mối quan hệ phi tuyến tính và tương tác phức tạp giữa các biến độc lập mà mô hình hồi quy tuyến tính chưa mô tả được. Mô hình random forest còn có khả năng xử lý hiệu quả biến phân loại nhiều mức một cách tự nhiên khi xây dựng các cây quyết định, trong khi đó mô hình hồi quy tuyến tính sẽ dùng kỹ thuật one hot encoding để tạo biến giả, tăng độ phức tạp của mô hình và có thể gây ra vấn đề đa cộng tuyến. Hơn nữa, random forest ít bị ảnh hưởng bởi giá trị ngoại lai (outliers) nhờ lấy trung bình của nhiều cây quyết định, và không yêu cầu các giả định phân phối nghiêm ngặt, phù hợp với tính chất dữ liệu trong bài toán này.
 
 # Phần 8. Dự đoán doanh thu trong 6 tháng tiếp theo bằng mô hình ARIMA: 
 
@@ -796,7 +1072,7 @@ Trục hoành là độ trễ, trục tung là giá trị của hệ số tự t
 \
  p: Số lượng độ trễ (lags) có ý nghĩa trong PACF.
 
-* Xác định q thông qua biểu đồ PACF: 
+* Xác định p thông qua biểu đồ PACF: 
 ```{r}
 pacf(revenue_by_date, main = "PACF chart for revenue_ts_date time series")
 ```
@@ -875,7 +1151,7 @@ lines(revenue_ts_date, col = "blue", lwd = 2)
 
 1. Xu hướng dự báo: Doanh thu pizza trong 6 tháng dự báo có xu hướng ổn định, không tăng hoặc giảm mạnh theo thời gian. Điều này thể hiện qua đường trung bình (màu xanh), dao động quanh một mức giá trị cố định, không có sự thay đổi đáng kể về xu hướng. 
 
-2. Biến động của dữ liệu: Trong dữ liệu lịch sử (2015-2016), doanh thu pizza có những giai đoạn dao động lớn và xuất hiện các đỉnh cao đột ngột. Tuy nhiên, dự báo không phản ánh các biến động lớn đó, mà chỉ nhắm đến mức trung bình chung, làm giảm khả năng dự đoán các đột biến doanh thu (nếu có).
+2. Biến động của dữ liệu: Trong dữ liệu lịch sử, doanh thu pizza có những giai đoạn dao động lớn và xuất hiện các đỉnh cao đột ngột. Tuy nhiên, dự báo không phản ánh các biến động lớn đó, mà chỉ nhắm đến mức trung bình chung, làm giảm khả năng dự đoán các đột biến doanh thu (nếu có).
 
 3. Về độ tin cậy: Với khoảng tin cậy khá rộng, đặc biệt ở cuối giai đoạn dự báo, điều này có thể ám chỉ rằng mô hình gặp khó khăn trong việc nắm bắt toàn bộ đặc điểm của dữ liệu, đặc biệt là những biến động bất thường trong lịch sử.
 Do đó, dự đoán này nên được sử dụng thận trọng, đặc biệt trong việc ra quyết định dài hạn.
@@ -884,6 +1160,57 @@ Do đó, dự đoán này nên được sử dụng thận trọng, đặc biệ
 
 # Phần 9. Kết luận:
 
-# Phần 10. Phụ lục:
+Mục tiêu của đề tài là thực hiện bài toán phân tích dữ liệu và xây dựng mô hình dự đoán với ngôn ngữ R trên tập dữ liệu bán hàng của một cửa hàng pizza. Đồ án của nhóm đã đạt được mục tiêu đề ra bằng cách: Hiểu dữ liệu và bài toán; Tiền xử lý dữ liệu như kiểm tra giá trị thiếu, chuyển sang kiểu dữ liệu phù hợp, tạo các biến mới cần thiết...; Cung cấp các đánh giá và trực quan hóa kết quả phân tích nhu cầu tiêu thụ pizza, nguyên liệu, doanh số, doanh thu bằng nhiều loại biểu đồ đa dạng; Xây dựng được mô hình dự đoán doanh số với độ chính xác cao và sai số nhỏ; Dự đoán doanh thu trong 6 tháng tiếp theo bằng mô hình ARIMA. Mặc dù đồ án đã sử dụng một tập dữ liệu khá lớn, tuy nhiên thông tin dữ liệu là từ các đơn đặt hàng pizza trong năm 2015, mang tính chất thực hành phân tích. Ngoài ra, tập dữ liệu chứa ít thông tin về khách hàng, gây khó khăn trong việc thực hiện các phân tích liên quan như phân khúc khách hàng, phân tích hành vi mua sắm. Qua những hạn chế đã đề cập, để phát triển đề tài này nhóm có thể thu thập nhiều thông tin liên quan đến khách hàng, sử dụng dữ liệu mới nhất từ các hệ thống bán hàng thời gian thực nhằm nâng cao giá trị của các phân tích.
+
+# Phần 10. Tài liệu tham khảo:
 
 # Phần 11. Đóng góp:
+
+## 11.1. Bảng phân công nhiệm vụ
+
+| STT |   Mã SV   |     Họ và tên    |                Nhiệm vụ                                                                              |
+|-----|-----------|------------------|------------------------------------------------------------------------------------------------------|
+|  1  |  22133017 | Nguyễn Thị Ngọc Hân | - Lập kế hoạch và Phân công. \
+- Viết tóm tắt (Phần 1). \
+- Viết giới thiệu (Phần 2). \
+- Phân tích doanh số (6.4). \
+- Dự đoán doanh số bằng mô hình hồi quy tuyến tính (7.1) và random forest (7.2); Kết luận phần dự đoán doanh số (7.4).  \
+- Format R Markdown. |
+|  2  |  22133020 | Nguyễn Hoàng | - Phân tích nhu cầu tiêu thụ pizza theo thời gian (6.2) \
+- Phân tích nguyên liệu (6.3). \
+- Viết kết luận (Phần 9). \
+- Tổng hợp file Word. |
+|  3  |  22133043 | Võ Triệu Phúc  | - Thông tin về tập dữ liệu (Phần 4). \
+- Tiền xử lý dữ liệu (Phần 5) \
+- Dự đoán doanh số bằng mô hình XGBoost (7.3).|
+|  4  |  22151305 | Nguyễn Thị Hồng Thơ  | - Phân tích tổng quan dữ liệu (6.1). \
+- Phân tích doanh thu (6.5). \
+- Dự đoán doanh thu theo thời gian (Phần 8). \
+- Tổng hợp file PowerPoint. |
+		
+## 11.2. Thành viên nhận xét và đánh giá
+
+### Nguyễn Thị Ngọc Hân
+
+| Thành viên      | Nhận xét     | Đánh giá (%)     |
+|------------|-----------|-----------|
+| Nguyễn Hoàng     | Hoàn thành đúng tiến độ. Sử dụng đa dạng biểu đồ, nhận xét các biểu đồ rất chi tiết. | 100 |
+| Võ Triệu Phúc     | Giải thích tập dữ liệu bằng AI nhưng không kiểm tra lại, xác định sai kiểu dữ liệu của order_date, unit_price,... Trễ hạn của nhóm. Xây dựng được mô hình XGBoost nhưng chưa nhận xét. | 85 |
+| Nguyễn Thị Hồng Thơ    | Hoàn thành tốt nhiệm vụ. | 100 |
+
+### Nguyễn Hoàng
+
+| Thành viên      | Nhận xét     | Đánh giá (%)     |
+|------------|-----------|-----------|
+| Nguyễn Thị Ngọc Hân     | Phân công việc cụ thể cho thành viên, đảm bảo tiến độ của nhóm. Hoàn thành tốt nhiệm vụ | 100 |
+| Võ Triệu Phúc     | Hoàn thành nhiệm vụ | 100 |
+| Nguyễn Thị Hồng Thơ    | Hoàn thành tốt nhiệm vụ | 100 |
+
+### Nguyễn Thị Hồng Thơ
+
+| Thành viên      | Nhận xét     | Đánh giá (%)     |
+|------------|-----------|-----------|
+| Nguyễn Hoàng     | Hoàn thành đúng tiến độ. Nhận xét biểu đồ rất chi tiết | 100 |
+| Võ Triệu Phúc     | Hoàn thành nhiệm vụ | 100 |
+| Nguyễn Thị Ngọc Hân   | Phân công việc cụ thể cho nhóm, kiểm tra lại các việc thường xuyên. Hoàn thành đúng tiến độ. | 100 |
+
