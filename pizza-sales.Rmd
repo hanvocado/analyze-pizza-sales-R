@@ -145,7 +145,7 @@ Dữ liệu của cột order_time là kiểu POSIXct, được lưu trữ dư�
 temp_time <- format(df$order_time, "%H:%M:%S")
 df <- df %>% mutate(order_hour = sub("(..):..:..", "\\1", temp_time))
 
-head(df)
+df
 ```
 
 #### Tạo cột order_weekday
@@ -593,7 +593,25 @@ ggplot(revenue_by_hour_day, aes(x = order_hour, y = revenue, fill=order_weekday,
 
 > Biểu đồ cho thấy doanh thu đều chạm đỉnh vào 12h các ngày trong tuần, trừ Thứ 7 và Chủ Nhật. Điều này cho thấy doanh thu sẽ cao vào giờ nghỉ trưa của những ngày đi làm của khách hàng. Ngày Thứ 7 và Chủ Nhật, doanh thu sẽ cao hơn vào thời điểm sau 17h đến 20h. Điều này có thể do khách hàng có xu hướng ăn tối muộn hơn vào cuối tuần. Bên cạnh đó, có sự chênh lệch doanh thu đáng kể vào các thời điểm trong ngày. Cửa hàng có thể triển khai các chương trình khuyến mãi vào các khung giờ thấp điểm để thu hút thêm khách hàng và tăng doanh thu.
 
-### 6.5.2. Phân tích doanh thu một ngày dùng Time Series
+### 6.5.2. Phân tích doanh thu một ngày dùng Time Series - Chuỗi thời gian
+
+* Khái niệm về chuỗi thời gian:
+
+Chuỗi thời gian là tập hợp các dữ liệu có sự phụ thuộc của các giá trị quan sát được thu thập qua thời gian. Với mục tiêu là dùng các dữ liệu trong quá khứ để phân tích và dự báo cho dữ liệu trong tương lai.
+
+* Các thành phần chuỗi thời gian: 
+i. Thành phần xu hướng (Trend): Thành phần xu hướng là thành phần thể hiện mức tăng giảm của lượng biến quan sát theo một quy luật nào đó trong một khoảng thời gian đủ dài.
+ii. Thành phần chu kỳ (Cyclic): Các mẫu chu kỳ xuất hiện dưới dạng những dao động không đều trong dữ liệu, bị ảnh hưởng bởi các điều kiện kinh tế và thường liên quan đến chu kỳ kinh doanh rộng lớn hơn. Khác với tính mùa vụ, ảnh hưởng chu kỳ đối với chuỗi thời gian trong tương lai là không thể đoán trước.
+iii. Thành phần mùa (Seasonal): Trong khi thành phần xu hướng và thành phần chu kỳ của chuỗi thời gian được xác định bằng cách phân tích chuỗi thời gian kéo dài qua nhiều năm, thì nhiều chuỗi thời gian cho thấy có những kiểu biến thiên lặp lại theo tần suất theo quý , theo mùa,…, biến động của lượng biến tuân theo một quy luật nào đó giữa các thời điểm trong năm và lặp lại trong các năm kế tiếp.
+iv. Thành phần bất thường: Ngoài các yếu tố xu hướng , chu kỳ, và mùa, thực tế giá trị lượng biến quan sát còn chịu sự chi phối của các yếu tố ngẫu nhiên, các yếu tố bất thường ngắn hạn không chịu sự liên kết với thành phần khác như mùa, chu kỳ, xu thế.
+
+* Phân biệt giữa các mẫu chu kỳ và mùa vụ:
+Các dao động không có tần suất cố định là chu kỳ.
+Nếu các dao động khớp với các khoảng thời gian theo lịch, chúng là mùa vụ.
+
+* Đồ thị thời gian: Đồ thị thời gian là những đồ thị biểu diễn các quan sát được vẽ theo các mốc thời gian tương ứng, với các điểm dữ liệu liên tiếp được nối bằng các đoạn thẳng. 
+
+* Ứng dụng trong việc phân tích doanh thu một ngày với chuỗi thời gian: dùng chuỗi thời gian do doanh thu pizza tính theo ngày có nhiều điểm dữ liệu với các mốc thời gian theo ngày.  
 
 * Sao chép dữ liệu vào biến df_ts để xử lý trên bản sao không gây ảnh hưởng đến dữ liệu gốc.
 
@@ -629,15 +647,25 @@ print(revenue_ts_date)
 ```{r}
 plot(revenue_ts_date, main = "Revenue of Pizza Over 12 months", xlab = "Time", ylab = "Revenue (USD)", col = "red", lwd = 2)
 ```
-```{r}
-revenue_ts_month<-ts(revenue_by_date$revenue, start = c(2015, 1), frequency = 12)
-# Kiểm tra chuỗi thời gian
-print(revenue_ts_month)
-```
 
-> Xu hướng tổng thể: Có sự biến động trong doanh thu theo ngày trong năm 2015 của cửa hàng. Có những ngày doanh thu cao hơn và những ngày doanh thu thấp hơn.
+> Xu hướng tổng thể: Có sự biến động trong doanh thu theo ngày trong năm 2015 của cửa hàng. Có những ngày doanh thu cao hơn và những ngày doanh thu thấp hơn. Nhưng xu hướng doanh thu tổng thể không tăng hoặc giảm rõ rệt trong giai đoạn từ 2015 đến 2016. Nó khá ổn định quanh mức trung bình.
 > Doanh thu có sự biến động đáng kể hàng ngày, điều này có thể do nhiều yếu tố như ngày trong tuần, ngày lễ, hoặc các sự kiện đặc biệt. Xu hướng biến động: giảm vào đầu tháng và tăng vào cuối tháng. Doanh thu biến động ít hơn vào những ngày đầu năm. 
 > Doanh thu tăng cao bất thường vào những ngày của tháng 5, tháng 7 và khoảng tháng 8. 
+> Đầu năm 2015: Doanh thu dao động xung quanh mức trung bình, không có biến động đột biến.
+> Giữa năm 2015: Xuất hiện một số đỉnh cao vượt xa mức trung bình, có thể do hoạt động khuyến mãi hoặc sự kiện đặc biệt.
+> Cuối năm 2015: Có xu hướng giảm nhẹ, đặc biệt gần 2016.
+
+* Kiểm tra tính mùa vụ (Seasonality) của chuỗi thời gian: 
+
+> Thời gian cần thiết:
+> Tối thiểu một chu kỳ hoàn chỉnh để xác định mùa vụ.
+> Tối thiểu hai chu kỳ để xác nhận tính lặp lại và phân tích chính xác hơn.
+Ví dụ:
+Chu kỳ hàng tuần (7 ngày): Cần ít nhất 7-14 ngày.
+Chu kỳ hàng tháng (12 tháng): Cần ít nhất 12-24 tháng.
+Chu kỳ hàng năm (365 ngày): Cần ít nhất 365-730 ngày (1-2 năm).
+
+> Do dữ liệu chỉ các ngày trong một năm 2015 nên chuỗi thời gian revenue_ts_date không có tính mùa vụ. 
 
 ### 6.5.3. Phân tích doanh thu theo tháng
 
@@ -1056,6 +1084,8 @@ Ngoài ra, mô hình random forest sau khi được tối ưu đã dự đoán d
 
 Mục tiêu của mô hình là dự báo doanh thu theo ngày của chuỗi doanh thu theo ngày(revenue_ts_date) từ dữ liệu được khai thác trong giai đoạn từ 01/01/2015 đến 20/12/2015 theo phương pháp ARIMA. 
 
+
+* Mô hình sử dụng đầu vào chính là những tín hiệu quá khứ của chuỗi được dự báo để dự báo nó.
 * Khi xây dựng mô hình ARIMA, cần phải xem xét tham số p,d,q. Đầu tiên cần phải lựa chọn tham số phù hợp cho mô hình ARIMA (p,d,q):
   + p: Số bậc của phần tự hồi quy (Auto-Regressive). Nó đại diện cho số lượng các giá trị trước đó của chuỗi thời gian được sử dụng để dự đoán giá trị hiện tại. 
   + d: Bậc sai phân cần thực hiện để chuỗi thời gian trở nên dừng (stationary). Chuỗi thời gian được gọi là dừng nếu giá trị kỳ vọng và phương sai của nó không thay đổi theo thời gian. Sai phân giúp loại bỏ xu hướng (trend) và tính mùa vụ (seasonality) trong dữ liệu. d đại diện cho số lần sai phân để chuỗi thời gian trở nên dừng. 
@@ -1068,8 +1098,11 @@ Mục tiêu của mô hình là dự báo doanh thu theo ngày của chuỗi doa
 adf_test <- adf.test(revenue_ts_date)
 print(adf_test)
 ```
-
-> Giá trị p-value < 0.05, chúng ta bác bỏ giả thuyết 0 rằng chuỗi thời gian không dừng. Nghĩa là chấp nhận giả thuyết c  huỗi thời gian dừng. 
+> Kết quả kiểm định:
+Giá trị thống kê ADF (Dickey-Fuller statistic): -5.4062 - giá trị âm lớn (xa 0) thường gợi ý chuỗi có tính dừng.
+Lag order = 7 - số độ trễ được sử dụng trong kiểm định để xử lý tự tương quan.
+\
+> Giá trị p-value < 0.05, chúng ta bác bỏ giả thuyết 0 rằng chuỗi thời gian không dừng. Nghĩa là chấp nhận giả thuyết chuỗi thời gian dừng. 
 > Chuỗi thời gian dừng nên lấy d = 0
 * Tìm tham số phù hợp cho mô hình ARIMA: 
 * Xác định p, q dựa vào ACF (Auto-Correlation Function) và PACF (Partial Auto-Correlation Function):
@@ -1081,12 +1114,18 @@ print(adf_test)
 * Xác định hệ số tự tương quan (AFC) thông qua biểu đồ AFC. ACF đo lường tương quan giữa các quan sát hiện tại và các quan sát trễ (lags) 
 ```{r}
 # Vẽ biểu đồ ACF cho chuỗi thời gian revenue_ts_date
-acf(revenue_ts_date, main = " ACF chart for revenue_ts_date time series", lag.max = 100)
+acf(revenue_ts_date, main = " ACF chart for revenue_ts_date time series")
 ```
 
 \
 Trục hoành là độ trễ, trục tung là giá trị của hệ số tự tương quan tương ứng với độ trễ. Dãi màu xanh là khoảng tin cậy 95% để giá trị hệ số tự tương quan bằng 0. Nếu tại một độ trễ nhỏ nhất mà đoạn thẳng (vuông góc với trục hoành) mà độ dài đại diện cho giá trị của hệ số tự tương quan nằm ngoài khoảng tin cậy thì đó chính là độ trễ phù hợp lớn nhất mà ta nên lựa chọn cho quá trình trung bình trượt MV(q). Bậc q không nên quá lớn. 
 \
+> Phân tích đồ thị:
+> Lag = 0 chỉ là giá trị tự tương quan hoàn hảo và không liên quan đến việc xác định bậc của MA.
+> Tại lag 2, giá trị ACF vượt giới hạn tin cậy, cho thấy thành phần MA ảnh hưởng mạnh mẽ ở lag này.
+> Điều này cho thấy thành phần MA bậc q = 2 sẽ mô hình hóa tốt thành phần sai số.
+\
+
  p: Số lượng độ trễ (lags) có ý nghĩa trong PACF.
 
 * Xác định p thông qua biểu đồ PACF: 
@@ -1096,6 +1135,8 @@ pacf(revenue_ts_date, main = "PACF chart for revenue_ts_date time series")
 
 \
 Tương tự như ACF, thông qua một biểu đồ PACF về giá trị các hệ số tương quan riêng phần tương ứng với các độ trễ khác nhau, chúng ta sẽ tìm ra được các bậc tự do phù hợp. Đó chính là vị trí mà giá trị của hệ số tương quan riêng phần nằm ngoài ngưỡng tin cậy 95% của giả thuyết hệ số tương quan riêng phần bằng 0.
+
+> Phân tích đồ thị:
 Quan sát các spike (điểm vượt ngưỡng):
 Có một spike lớn ở lag rất nhỏ (gần 0.01).
 Các spike tiếp theo (ở lag khoảng 0.02 và 0.04) cũng vượt ngưỡng nhưng nhỏ hơn.
@@ -1103,15 +1144,16 @@ Sau đó, các giá trị PACF giảm dần và nằm trong khoảng tin cậy (
 Nhận định:
 Spike lớn đầu tiên trong PACF cho thấy một mô hình tự hồi quy.
 Sau lag 0.04, các giá trị PACF dường như không còn đáng kể.
+> Do đó, có thể xác định bậc p = 2. 
 
 * Tự động chọn tham số ARIMA (p,d,q):
 
 ```{r}
-auto_model <- auto.arima(revenue_ts_date, seasonal=TRUE, stepwise=FALSE, approximation=FALSE)
-# Dùng  stepwise=FALSE để tìm kiếm tăng độ chính xác trong việc tìm kiếm mô hình nhưng tiêu tốn thời gian tính toán nhiều hơn.
-# approximation=FALSE sử dụng phương pháp chính xác (exact likelihood estimation), đảm bảo mô hình được chọn là tốt nhất dựa trên các tiêu chí như AIC, AICc, hoặc BIC, nhưng thời gian tính toán sẽ tăng đáng kể.
+auto_model <- auto.arima(revenue_ts_date, stepwise=FALSE, approximation=FALSE)
 summary(auto_model)
 ```
+> Dùng  stepwise=FALSE để tìm kiếm tăng độ chính xác trong việc tìm kiếm mô hình nhưng tiêu tốn thời gian tính toán nhiều hơn.
+> Approximation=FALSE sử dụng phương pháp chính xác (exact likelihood estimation), đảm bảo mô hình được chọn là tốt nhất dựa trên các tiêu chí như AIC, AICc, hoặc BIC, nhưng thời gian tính toán sẽ tăng đáng kể.
 
 > Tham số được chọn là ARIMA (2,0,2). Giá trị của AIC càng nhỏ thì mô hình càng phù hợp. ACF1 gần 0 cho thấy phần dư không có tự tương quan đáng kể, điều này là tốt vì nó cho thấy mô hình đã nắm bắt được cấu trúc của chuỗi thời gian.
 
@@ -1121,7 +1163,8 @@ summary(auto_model)
 # Kiểm tra phần dư của mô hình ARIMA
 checkresiduals(auto_model)
 ```
-
+> Kết quả kiểm định:p-value < 0.05: Chúng ta bác bỏ giả thuyết gốc, nghĩa là phần dư vẫn có tự tương quan.
+Điều này gợi ý rằng mô hình ARIMA(2,0,2) chưa đủ để mô hình hóa hoàn toàn dữ liệu, và có thể cần điều chỉnh hoặc thử nghiệm thêm các cấu trúc mô hình khác.
 > Phân phối phần dư dường như hơi lệch với đuôi dài, đặc biệt có một số phần dư cực lớn. Điều này cho thấy phân phối của phần dư không hoàn toàn tuân theo chuẩn. Các giá trị tự tương quan của phần dư không nằm hoàn toàn trong giới hạn tin cậy (đường chấm xanh), đặc biệt ở một số độ trễ (lags).
 
 * Kiểm tra lại với các mô hình ARIMA khác nhau: 
@@ -1143,8 +1186,7 @@ summary(model_500)
 model_212 <- arima(revenue_ts_date, order = c(2, 1, 2))
 summary(model_212)
 ```
-
-> Mô hình ARIMA (2,0,2) vẫn tốt hơn. 
+> So sánh các chỉ số AIC cho thấy mô hình ARIMA (2,0,2) vẫn tốt hơn (do có chỉ số AIC thấp nhất).
 
 * Sau khi đã tìm ra được mô hình ARIMA tốt nhất. Chúng ta sẽ dự báo cho khoảng thời gian tiếp theo.
 
@@ -1174,11 +1216,50 @@ Do đó, dự đoán này nên được sử dụng thận trọng, đặc biệ
 
 4. Ổn định: Nếu xu hướng trung bình tiếp tục, doanh nghiệp có thể dự đoán doanh thu tương đối ổn định mà không cần phải đối mặt với biến động lớn trong ngắn hạn nhưng cũng có rủi ro tiềm ẩn: Các sự kiện bất thường (như khuyến mãi, nhu cầu mùa cao điểm) có thể không được phản ánh đầy đủ trong mô hình. Điều này cần được cân nhắc khi lập kế hoạch kinh doanh.
 
+**Đánh giá về hiệu quả việc dùng mô hình ARIMA cho phân tích doanh thu trong 6 tháng tiếp theo:**
+
+1. Hiệu quả dự đoán từ đồ thị:
+Đường dự báo (forecast line): Phần dự báo có xu hướng ổn định và không có sự biến động lớn trong tương lai, thể hiện mô hình không dự đoán được các dao động hoặc bất thường tiềm tàng trong doanh thu.
+Dải tin cậy (confidence intervals): Dải màu xám xung quanh dự báo biểu thị khoảng tin cậy. Nó mở rộng dần khi dự đoán xa hơn, phản ánh sự không chắc chắn tăng dần. Tuy nhiên, dải tin cậy khá lớn, cho thấy mô hình chưa thực sự tốt trong việc nắm bắt các dao động phức tạp của chuỗi thời gian doanh thu.
+
+2. Phân tích phần dư (Residuals):
+Ljung-Box Test:
+Kết quả kiểm định: 𝑝 – value < 2.2𝑒−16, cho thấy phần dư không độc lập. Điều này chỉ ra rằng mô hình ARIMA chưa xử lý hoàn toàn các tự tương quan trong chuỗi thời gian.
+Phần dư: Từ các đồ thị ACF và PACF của phần dư, có vẻ vẫn còn sự tự tương quan ở các lag, đặc biệt ở những lag nhỏ (lag 1, lag 2,...).
+Điều này chỉ ra rằng mô hình chưa tối ưu trong việc mô hình hóa toàn bộ cấu trúc chuỗi thời gian, có thể do thiếu các biến số ngoại sinh hoặc yếu tố mùa vụ chưa được xử lý tốt.
+3. Đánh giá thông số mô hình:
+AR(2), MA(2) có ý nghĩa thống kê, nhưng sigma^2 (150622) khá lớn, biểu thị sai số dự đoán còn cao.
+BIC và AIC đều cho thấy mức độ phức tạp tương đối của mô hình (AIC = 5292.13). Tuy nhiên, việc tối ưu thêm mô hình có thể giảm giá trị này.
+
+4. Tổng quan về hiệu quả:
+Ưu điểm:
+Mô hình ARIMA có thể nắm bắt được xu hướng tổng quan và phần nào dự đoán được các mức giá trị trung bình của doanh thu trong tương lai.
+Phù hợp để dự báo ngắn hạn với dữ liệu không quá phức tạp hoặc ít dao động mạnh.
+Nhược điểm:
+Chưa xử lý tốt tính mùa vụ hoặc các yếu tố ngoại sinh có ảnh hưởng lớn đến doanh thu.
+Độ tin cậy của dự báo trong dài hạn thấp, thể hiện qua dải tin cậy lớn.
+Phần dư không hoàn toàn ngẫu nhiên, cho thấy cần xem xét các mô hình khác.
+
+5. Kết luận và đề xuất tối ưu:
+Cải thiện mô hình:
+Đánh giá thêm dữ liệu:
+Tăng số lượng dữ liệu lịch sử hoặc kiểm tra các đặc điểm phức tạp khác của chuỗi (dao động không theo quy luật).
+Hiệu quả:
+ARIMA phù hợp cho dự báo ngắn hạn, nhưng nếu muốn độ chính xác cao hơn cho các dự báo 6 tháng hoặc dài hạn, cần tối ưu thêm mô hình. 
+
 # Phần 9. Kết luận:
 
 Mục tiêu của đề tài là thực hiện bài toán phân tích dữ liệu và xây dựng mô hình dự đoán với ngôn ngữ R trên tập dữ liệu bán hàng của một cửa hàng pizza. Đồ án của nhóm đã đạt được mục tiêu đề ra bằng cách: Hiểu dữ liệu và bài toán; Tiền xử lý dữ liệu như kiểm tra giá trị thiếu, chuyển sang kiểu dữ liệu phù hợp, tạo các biến mới cần thiết...; Cung cấp các đánh giá và trực quan hóa kết quả phân tích nhu cầu tiêu thụ pizza, nguyên liệu, doanh số, doanh thu bằng nhiều loại biểu đồ đa dạng; Xây dựng được mô hình dự đoán doanh số với độ chính xác cao và sai số nhỏ; Dự đoán doanh thu trong 6 tháng tiếp theo bằng mô hình ARIMA. Mặc dù đồ án đã sử dụng một tập dữ liệu khá lớn, tuy nhiên thông tin dữ liệu là từ các đơn đặt hàng pizza trong năm 2015, mang tính chất thực hành phân tích. Ngoài ra, tập dữ liệu chứa ít thông tin về khách hàng, gây khó khăn trong việc thực hiện các phân tích liên quan như phân khúc khách hàng, phân tích hành vi mua sắm. Qua những hạn chế đã đề cập, để phát triển đề tài này nhóm có thể thu thập nhiều thông tin liên quan đến khách hàng, sử dụng dữ liệu mới nhất từ các hệ thống bán hàng thời gian thực nhằm nâng cao giá trị của các phân tích.
 
 # Phần 10. Tài liệu tham khảo:
+
+1. Winton Clem, Analysis of Data and the Field of Data Science, First edition, 2024.
+2. Peter J. Brockwell, Richard A. Davis, Introduction to Time Series and Forecasting, 2nd ed, Nxb. Springer, 2002. 
+3. Joshua Noble, What are ARIMA models?, ibm.com, https://www.ibm.com/topics/arima-model, 24/05/2024, truy cập ngày 10/12/2014. 
+4. G.E. Box, G.M. Jenkins, G.C. Reinsel and G.M. Ljung, Time series analysis: forecasting and control, 4th ed, John Wiley & Sons, 2016. 
+5. Phạm Đình Khánh,  Mô hình ARIMA trong time series, 12/12/2019, https://phamdinhkhanh.github.io/2019/12/12/ARIMAmodel.html#42-ch%E1%BB%89-s%E1%BB%91-aic---akaike-information-criteria, truy cập ngày 12/11/2024. 
+6. Prabhakaran Selva, ARIMA Model – Complete Guide to Time Series Forecasting in Python, Machine Learning Plus, machinelearningplus.com, https://www.machinelearningplus.com/time-series/arima-model-time-series-forecasting-python/, 09/12/2019, truy cập ngày 15/11/2024. 
+
 
 # Phần 11. Đóng góp:
 
