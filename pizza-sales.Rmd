@@ -488,6 +488,11 @@ print(revenue_ts_date)
 ```{r}
 plot(revenue_ts_date, main = "Revenue of Pizza Over 12 months", xlab = "Time", ylab = "Revenue (USD)", col = "red", lwd = 2)
 ```
+```{r}
+revenue_ts_month<-ts(revenue_by_date$revenue, start = c(2015, 1), frequency = 12)
+# Kiểm tra chuỗi thời gian
+print(revenue_ts_month)
+```
 
 > Xu hướng tổng thể: Có sự biến động trong doanh thu theo ngày trong năm 2015 của cửa hàng. Có những ngày doanh thu cao hơn và những ngày doanh thu thấp hơn.
 > Doanh thu có sự biến động đáng kể hàng ngày, điều này có thể do nhiều yếu tố như ngày trong tuần, ngày lễ, hoặc các sự kiện đặc biệt. Xu hướng biến động: giảm vào đầu tháng và tăng vào cuối tháng. Doanh thu biến động ít hơn vào những ngày đầu năm. 
@@ -662,20 +667,32 @@ Mô hình random forest sau khi được tối ưu đã dự đoán doanh số c
 
 Mục tiêu của mô hình là dự báo doanh thu theo ngày của chuỗi doanh thu theo ngày(revenue_ts_date) từ dữ liệu được khai thác trong giai đoạn từ 01/01/2015 đến 20/12/2015 theo phương pháp ARIMA. 
 
-* Đầu tiên cần phải lựa chọn tham số phù hợp cho mô hình ARIMA (p,d,q)
- 
-  + p: Số bậc của phần tự hồi quy (Auto-Regressive). Nó đại diện cho số lượng các giá trị trước đó của chuỗi thời gian được sử dụng để dự đoán giá trị hiện tại.
-  + d: Bậc sai phân cần thực hiện để chuỗi thời gian trở nên dừng (stationary). Chuỗi thời gian được gọi là dừng nếu giá trị kỳ vọng và phương sai của nó không thay đổi theo thời gian. Sai phân giúp loại bỏ xu hướng (trend) trong dữ liệu. Nếu dữ liệu đã dừng, d=0.
+* Khi xây dựng mô hình ARIMA, cần phải xem xét tham số p,d,q. Đầu tiên cần phải lựa chọn tham số phù hợp cho mô hình ARIMA (p,d,q):
+  + p: Số bậc của phần tự hồi quy (Auto-Regressive). Nó đại diện cho số lượng các giá trị trước đó của chuỗi thời gian được sử dụng để dự đoán giá trị hiện tại. 
+  + d: Bậc sai phân cần thực hiện để chuỗi thời gian trở nên dừng (stationary). Chuỗi thời gian được gọi là dừng nếu giá trị kỳ vọng và phương sai của nó không thay đổi theo thời gian. Sai phân giúp loại bỏ xu hướng (trend) và tính mùa vụ (seasonality) trong dữ liệu. d đại diện cho số lần sai phân để chuỗi thời gian trở nên dừng. 
+  > Phép sai phân là quá trình tính toán hiệu số giữa các giá trị liên tiếp trong chuỗi thời gian. Phép sai phân là quá trình tính toán hiệu số giữa các giá trị liên tiếp trong chuỗi thời gian. 
   + q: Số bậc của phần trung bình trượt (Moving Average).Nó đại diện cho số các nhiễu (error terms) trong quá khứ được sử dụng để dự đoán giá trị hiện tại.
+  * Đầu tiên, cần kiểm tra tính dừng của chuỗi thời gian: 
+  * Một chuỗi thời gian dừng có các đặc tính thống kê như trung bình và phương sai không thay đổi theo thời gian, điều này rất quan trọng cho việc xây dựng các mô hình dự báo như ARIMA. Kiểm tra tính dừng bằng ADF test (Augmented Dickey-Fuller): 
 
+```{r}
+adf_test <- adf.test(revenue_ts_date)
+print(adf_test)
+```
+
+> Giá trị p-value < 0.05, chúng ta bác bỏ giả thuyết 0 rằng chuỗi thời gian không dừng. Nghĩa là chấp nhận giả thuyết c  huỗi thời gian dừng. 
+> Chuỗi thời gian dừng nên lấy d = 0
+* Tìm tham số phù hợp cho mô hình ARIMA: 
 * Xác định p, q dựa vào ACF (Auto-Correlation Function) và PACF (Partial Auto-Correlation Function):
 \
+
+ * Xác định tham số p, q:  
   q: Số lượng độ trễ có ý nghĩa trong ACF.
   
-* Xác định hệ số tự tương quan (AFC) thông qua biểu đồ AFC: 
+* Xác định hệ số tự tương quan (AFC) thông qua biểu đồ AFC. ACF đo lường tương quan giữa các quan sát hiện tại và các quan sát trễ (lags) 
 ```{r}
 # Vẽ biểu đồ ACF cho chuỗi thời gian revenue_ts_date
-acf(revenue_ts_date, main = " ACF chart for revenue_ts_date time series")
+acf(revenue_ts_date, main = " ACF chart for revenue_ts_date time series", lag.max = 100)
 ```
 
 \
@@ -685,26 +702,25 @@ Trục hoành là độ trễ, trục tung là giá trị của hệ số tự t
 
 * Xác định q thông qua biểu đồ PACF: 
 ```{r}
-pacf(revenue_by_date, main = "PACF chart for revenue_ts_date time series")
+pacf(revenue_ts_date, main = "PACF chart for revenue_ts_date time series")
 ```
 
 \
 Tương tự như ACF, thông qua một biểu đồ PACF về giá trị các hệ số tương quan riêng phần tương ứng với các độ trễ khác nhau, chúng ta sẽ tìm ra được các bậc tự do phù hợp. Đó chính là vị trí mà giá trị của hệ số tương quan riêng phần nằm ngoài ngưỡng tin cậy 95% của giả thuyết hệ số tương quan riêng phần bằng 0.
-
-* Một chuỗi thời gian dừng có các đặc tính thống kê như trung bình và phương sai không thay đổi theo thời gian, điều này rất quan trọng cho việc xây dựng các mô hình dự báo như ARIMA. Kiểm tra tính dừng bằng ADF test:
-
-```{r}
-adf_test <- adf.test(revenue_ts_date)
-print(adf_test)
-```
-
-> Giá trị p-value < 0.05, chúng ta bác bỏ giả thuyết 0 rằng chuỗi thời gian không dừng. Nghĩa là chấp nhận giả thuyết chuỗi thời gian dừng. 
-> Chuỗi thời gian dừng nên lấy d = 0
+Quan sát các spike (điểm vượt ngưỡng):
+Có một spike lớn ở lag rất nhỏ (gần 0.01).
+Các spike tiếp theo (ở lag khoảng 0.02 và 0.04) cũng vượt ngưỡng nhưng nhỏ hơn.
+Sau đó, các giá trị PACF giảm dần và nằm trong khoảng tin cậy (giữa hai đường xanh).
+Nhận định:
+Spike lớn đầu tiên trong PACF cho thấy một mô hình tự hồi quy.
+Sau lag 0.04, các giá trị PACF dường như không còn đáng kể.
 
 * Tự động chọn tham số ARIMA (p,d,q):
 
 ```{r}
-auto_model <- auto.arima(revenue_ts_date)
+auto_model <- auto.arima(revenue_ts_date, seasonal=TRUE, stepwise=FALSE, approximation=FALSE)
+# Dùng  stepwise=FALSE để tìm kiếm tăng độ chính xác trong việc tìm kiếm mô hình nhưng tiêu tốn thời gian tính toán nhiều hơn.
+# approximation=FALSE sử dụng phương pháp chính xác (exact likelihood estimation), đảm bảo mô hình được chọn là tốt nhất dựa trên các tiêu chí như AIC, AICc, hoặc BIC, nhưng thời gian tính toán sẽ tăng đáng kể.
 summary(auto_model)
 ```
 
@@ -746,7 +762,7 @@ summary(model_212)
 * Dự đoán doanh thu trong 6 tháng (180 ngày) tiếp theo. Do điểm dữ liệu doanh thu theo tháng quá ít để xây dựng mô hình, nên sẽ dự đoán theo ngày, với số ngày là 180 ngày.    
 
 ```{r}
-forecast_values <- forecast(auto_model, h = 180)
+forecast_values <- forecast(auto_model, h = 180, level = c(80))
 # Hiển thị dự đoán
 print(forecast_values)
 ```
@@ -772,5 +788,5 @@ Do đó, dự đoán này nên được sử dụng thận trọng, đặc biệ
 # Phần 9. Kết luận:
 
 # Phần 10. Phụ lục:
-
+Hyndman, R. J., & Monash University, Australia. (n.d.). Forecasting: Principles and Practice (2nd ed). OTexts,  Truy cập 18/11/2024, from https://otexts.com/fpp2/
 # Phần 11. Đóng góp:
