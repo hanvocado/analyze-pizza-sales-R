@@ -33,7 +33,6 @@ library(forecast)
 library(wordcloud)
 library(tm)
 library(RColorBrewer)
-library(xgboost)
 library(caret)
 library(gbm)
 library(ParBayesianOptimization)
@@ -41,7 +40,7 @@ library(ParBayesianOptimization)
 
 # Phần 1. Tóm tắt
 
-  Nghiên cứu này dùng ngôn ngữ R để phân tích và xây dựng mô hình dự đoán trên tập dữ liệu bán hàng pizza trong quá khứ. Các biểu đồ Histogram, Boxplot, Line, Bar, Pie, Point, và WordCloud được ứng dụng để trực quan hóa xu hướng trong nhu cầu pizza theo thời gian, tìm ra các thành phần nguyên liệu được thường xuyên sử dụng, thể hiện doanh số, doanh thu của cửa hàng... Đối với doanh số, kiểm định Kruskal-Wallis được dùng để kiểm tra sự biến động doanh số của từng pizza giữa các tháng có đáng kể không và ANOVA được dùng để so sánh sự chênh lệch doanh số giữa các danh mục bánh. Sau đó các mô hình khác nhau đã được sử dụng để thực hiện dự đoán doanh số: Mô hình Hồi quy tuyến tính được chọn do tính đơn giản và khả năng giải thích dễ dàng, trong khi Rừng ngẫu nhiên và XGBoost được chọn để xử lý các mối quan hệ phức tạp giữa các biến độc lập. Bên cạnh đó, mô hình ARIMA được dùng để dự đoán doanh thu cho 6 tháng tiếp theo.
+  Nghiên cứu này dùng ngôn ngữ R để phân tích và xây dựng mô hình dự đoán trên tập dữ liệu bán hàng pizza trong quá khứ. Các biểu đồ Histogram, Boxplot, Line chart, Bar chart, Pie chart, Scatter plot và WordCloud được ứng dụng để phân tích dữ liệu và trực quan hóa xu hướng trong nhu cầu pizza theo thời gian, tìm ra các thành phần nguyên liệu được thường xuyên sử dụng, thể hiện doanh số, doanh thu của cửa hàng... Đối với doanh số, kiểm định Kruskal-Wallis được dùng để kiểm tra sự biến động doanh số của từng pizza giữa các tháng có đáng kể không và ANOVA được dùng để so sánh sự chênh lệch doanh số giữa các danh mục bánh. Sau đó các mô hình khác nhau đã được sử dụng để thực hiện dự đoán doanh số: Mô hình Hồi quy tuyến tính được chọn do tính đơn giản và khả năng giải thích dễ dàng, trong khi Rừng ngẫu nhiên và GBM được chọn để xử lý các mối quan hệ phức tạp giữa các biến độc lập. Bên cạnh đó, mô hình ARIMA được dùng để dự đoán doanh thu cho 6 tháng tiếp theo.
 
 # Phần 2. Giới thiệu
     
@@ -58,13 +57,11 @@ library(ParBayesianOptimization)
   
   * Phân tích và trực quan hóa doanh số theo kích cỡ bánh, danh mục bánh, xác định các pizza bán chạy nhất cũng như kém phổ biến nhất trong năm 2015. Xác định các yếu tố ảnh hưởng đến doanh số.
   
-  * Trực quan hóa sự biến động doanh số của từng pizza qua các tháng và kiểm định có sự khác biệt đáng kể giữa các tháng không.
-  
   * Xây dựng mô hình dự đoán doanh số của sản phẩm có độ chính xác trên 80%.
   
   * Phân tích và trực quan hóa doanh thu theo thời gian: doanh thu theo giờ, doanh thu theo ngày, doanh thu theo tháng của cửa hàng trong năm 2015.
   
-  * Xây dựng mô hình dự đoán doanh thu trong 6 tháng tiếp theo của cửa hàng có độ chính xác trên 80%.
+  * Xây dựng mô hình dự đoán doanh thu trong 6 tháng tiếp theo của cửa hàng.
 
 # Phần 4. Thông tin về tập dữ liệu
 
@@ -667,12 +664,11 @@ plot(revenue_ts_date, main = "Revenue of Pizza Over 12 months", xlab = "Time", y
 
 * Kiểm tra tính mùa vụ (Seasonality) của chuỗi thời gian: 
 
-> Thời gian cần thiết:
-> Tối thiểu một chu kỳ hoàn chỉnh để xác định mùa vụ.
-> Tối thiểu hai chu kỳ để xác nhận tính lặp lại và phân tích chính xác hơn.
-Ví dụ:
-Chu kỳ hàng tuần (7 ngày): Cần ít nhất 7-14 ngày.
-Chu kỳ hàng tháng (12 tháng): Cần ít nhất 12-24 tháng.
+Thời gian cần thiết: \
+Tối thiểu một chu kỳ hoàn chỉnh để xác định mùa vụ. Tối thiểu hai chu kỳ để xác nhận tính lặp lại và phân tích chính xác hơn. \
+Ví dụ: \
+Chu kỳ hàng tuần (7 ngày): Cần ít nhất 7-14 ngày. \
+Chu kỳ hàng tháng (12 tháng): Cần ít nhất 12-24 tháng. \
 Chu kỳ hàng năm (365 ngày): Cần ít nhất 365-730 ngày (1-2 năm).
 
 > Do dữ liệu chỉ các ngày trong một năm 2015 nên chuỗi thời gian revenue_ts_date không có tính mùa vụ. 
@@ -819,7 +815,7 @@ rf_sales_model_2 <- randomForest(sales ~ pizza_name + unit_price + pizza_size + 
 rf_sales_model_2
 ```
 
-> Từ Mean of squard residuals ta có RMSE bằng khoảng 8.6, giảm 6 đơn vị so với mô hình random forest ban đầu. Và R^2^ bằng 90%, tăng 20%. Chứng tỏ giá trị m~try~ = 2 là giá trị phù hợp để tối ưu mô hình. Chọn đây là mô hình dự đoán cuối cùng.
+> Từ Mean of squard residuals ta có RMSE bằng khoảng 8.6, giảm 6 đơn vị so với mô hình random forest ban đầu. Và % Var explained bằng 90%, tăng 20%. Chứng tỏ giá trị m~try~ = 2 là giá trị phù hợp để tối ưu mô hình.
 
 * Thực hiện tối ưu mô hình với m~try~ = 3:
 
@@ -829,7 +825,7 @@ rf_sales_model_3 <- randomForest(sales ~ pizza_name + unit_price + pizza_size + 
 rf_sales_model_3
 ```
 
-> Kết quả cho thấy Mean of squard residuals thấp và R^2^ cao hơn cả mô hình có m=2. Chọn đây là mô hình dự đoán cuối cùng.
+> Kết quả cho thấy Mean of squard residuals thấp và % Var explained cao hơn cả mô hình có m=2. Chọn đây là mô hình dự đoán cuối cùng.
 
 * Dự đoán doanh số trên tập dữ liệu kiểm tra
 
@@ -860,13 +856,17 @@ rmse <- sqrt(mean((predicted_sales - actual_values)^2))
 cat("RMSE: ", rmse)
 ```
 
-Trung bình, giá trị doanh số dự đoán và giá trị thực tế của nó chênh lệch nhau khoảng 8 đơn vị, bằng khoảng 8% giá trị trung bình của sales.
+Trung bình, giá trị doanh số dự đoán và giá trị thực tế của nó chênh lệch nhau khoảng 8 đơn vị, bằng 7% giá trị trung bình của sales.
 
 > Mô hình có R-squared cao trên cả tập dữ liệu huấn luyện và tập kiểm tra, nên có thể kết luận rằng mô hình không bị overfitting và đạt hiệu quả dự đoán rất tốt. Bên cạnh đó, sai số dự đoán (RMSE) nhỏ cho thấy đây là mô hình rất đáng tin cậy để dự đoán doanh số.
 
-## 7.3 Dự đoán doanh số bằng mô hình XGBoost
+## 7.3. Dự đoán bằng mô hình GBM
 
 Ở mô hình Random Forest xây dựng các cây quyết định độc lập song song và kết hợp chúng bằng trung bình hoặc biểu quyết đa số, dẫn đến mô hình ít nhạy cảm hơn với lỗi nhưng cũng có thể bỏ qua các mẫu quan trọng. Boosting, với khả năng học có trọng số, có xu hướng phù hợp hơn để nắm bắt các mối quan hệ phi tuyến phức tạp giữa các đặc trưng và mục tiêu, đặc biệt khi dữ liệu có nhiễu hoặc cần tối ưu hóa sâu hơn.
+
+* Tại sao sử dụng mô hình GBM:
+
+Với bài toán dự đoán doanh số bán hàng pizza, GBM là một lựa chọn hợp lý do dữ liệu có nhiều đặc trưng dạng danh mục và mối quan hệ giữa các đặc trưng không hoàn toàn tuyến tính. Khả năng sử dụng các tham số tùy chỉnh như độ sâu cây, tốc độ học, và số cây cũng cho phép chúng em tinh chỉnh mô hình để phù hợp với cấu trúc của dữ liệu này.
 
 * Tạo dataframe phù hợp và thực hiện tiền xử lý để phù hợp với yêu cầu của mô hình GBM.
 
@@ -878,301 +878,192 @@ Trung bình, giá trị doanh số dự đoán và giá trị thực tế của 
 sale_data
 ```
 
-* Lý do sử dụng mô hình XGboost:
-
-Vì ưu điểm nổi bật của XGBoost nằm ở khả năng tự động xử lý các biến phân loại (sau khi được mã hóa), khả năng học phi tuyến tính từ các đặc trưng, và tính năng điều chỉnh quá trình huấn luyện thông qua các tham số như learning rate (eta), max_depth, và subsampling. Trong bài toán này, XGBoost không chỉ sử dụng các đặc trưng đơn giản như giá bánh và thời gian, mà còn tận dụng các biến phân loại như loại bánh, kích thước, và danh mục, giúp mô hình khai thác được nhiều mối quan hệ tiềm ẩn trong dữ liệu.
+* Chia dữ liệu thành train và test
 
 ```{r}
-# Biến đổi cột thời gian và mã hóa biến phân loại
-sale_data <- sale_data %>%
-  mutate(
-    order_month_num = as.numeric(order_month), # Chuyển order_month thành số
-    pizza_name = as.factor(pizza_name)
-  )
-
-# Chuyển đổi biến phân loại thành dạng số
-sale_data$encoded_name <- as.numeric(sale_data$pizza_name)
-sale_data$encoded_size <- as.numeric(sale_data$pizza_size)
-sale_data$encoded_category <- as.numeric(sale_data$pizza_category)
-
-# Tạo tập dữ liệu đầu vào (features) và đầu ra (target)
-features <- sale_data %>%
-  select(order_month_num, unit_price, encoded_name, encoded_size, encoded_category)
-
-target <- sale_data$sales
-
-summary(sales_data)
-```
-
-
-* Chuẩn bị dữ liệu cho mô hình XGBoost
-
-```{r}
-#Chia tập dữ liệu thành train và test
+# Chia dữ liệu thành train và test
 set.seed(123)
-train_index <- createDataPartition(target, p = 0.8, list = FALSE)
-train_features <- as.matrix(features[train_index, ])
-test_features <- as.matrix(features[-train_index, ])
-train_target <- target[train_index]
-test_target <- target[-train_index]
+train_index <- createDataPartition(sale_data$sales, p = 0.8, list = FALSE)
+train_data <- sale_data[train_index, ]
+test_data <- sale_data[-train_index, ]
 
-dtrain <- xgb.DMatrix(data = train_features, label = train_target)
-dtest <- xgb.DMatrix(data = test_features, label = test_target)
+train_data <- train_data %>%
+  mutate(across(where(is.character), as.factor))
+test_data <- test_data %>%
+  mutate(across(where(is.character), as.factor))
+train_data$order_month <- as.factor(train_data$order_month)
+test_data$order_month <- as.factor(test_data$order_month)
+
 ```
 
-* Chuẩn bị tham số cho mô hình XGboost
+* Huấn luyện mô hình GBM
 
 ```{r}
 set.seed(123)
-params <- list(
-  objective = "reg:squarederror", # Hồi quy
-  eta = 0.1,                      # Learning rate 0.1
-  max_depth = 6                   # Độ sâu cây 6 
-)
-```
 
-* Huấn luyện mô hình XGBoost
-
-```{r}
-xgb_model <- xgboost(
-  data = dtrain,
-  params = params,
-  nrounds = 100,   
-  verbose = 0
+gbm_model <- gbm(
+  formula = sales ~ pizza_name + unit_price + pizza_size + pizza_category + order_month, # Biến đầu vào và đầu ra
+  data = train_data,            # Dữ liệu huấn luyện
+  distribution = "gaussian",    # Phân phối cho biến đầu ra (ở đây là giá trị liên tục)
+  n.trees = 5000,               # Số lượng cây tối đa
+  interaction.depth = 5,        # Độ sâu tối đa của cây
+  shrinkage = 0.01,             # Hệ số học
+  cv.folds = 5,                 # Số lượng tập gấp nếp (cross-validation)
+  verbose = FALSE               # Không hiển thị thông báo trong quá trình chạy
 )
 
-# Dự đoán và đánh giá
-preds <- predict(xgb_model, dtest)
 
 ```
 
-* Kiểm tra độ chính xác của mô hình 
+Chúng em sử dụng phân phối "gaussian" cho biến phụ thuộc trong mô hình này vì "gaussian" được sử dụng khi biến đầu ra là một giá trị liên tục (ví dụ, giá trị dự đoán cho sales là một số thực). Đây là lựa chọn chuẩn cho các bài toán hồi quy.
+
+* Xem thông tin về relative influence của các đặc trưng:
 
 ```{r}
+summary (gbm_model)
+```
 
-# Tạo DataFrame từ dữ liệu thực tế và dự đoán
-comparison <- data.frame(
-  Actual = test_target,
-  Predicted = preds
+Từ kết quả của summary(gbm_model) cho thấy giá trị Relative Influence của đặc trưng pizza_category chỉ đạt 0.03, cho thấy đặc trưng này gần như không đóng góp đáng kể vào quá trình dự đoán doanh số bán hàng (sales) so với các đặc trưng khác. Điều này có thể ngụ ý rằng sự phân loại theo danh mục pizza (pizza_category) không mang lại thông tin hữu ích hoặc không tương quan mạnh với biến mục tiêu trong dữ liệu huấn luyện. Việc giữ lại một đặc trưng có tầm quan trọng thấp như vậy có thể làm tăng độ phức tạp không cần thiết của mô hình mà không cải thiện đáng kể hiệu suất dự đoán. Do đó, trong các bước tối ưu hóa, pizza_category sẽ được loại bỏ để giảm độ phức tạp và tăng hiệu quả tính toán mà vẫn đảm bảo độ chính xác của mô hình.
+
+### Tối hóa ưu mô hình
+
+* Loại bỏ biến độc lập pizza_category
+
+```{r}
+set.seed(123)
+# Huấn luyện mô hình GBM
+gbm_model <- gbm(
+  formula = sales ~ pizza_name + unit_price + pizza_size  + order_month, # Biến đầu vào và đầu ra
+  data = train_data,            # Dữ liệu huấn luyện
+  distribution = "gaussian",    # Phân phối cho biến đầu ra (ở đây là giá trị liên tục)
+  n.trees = 5000,               # Số lượng cây tối đa
+  interaction.depth = 5,        # Độ sâu tối đa của cây
+  shrinkage = 0.01,             # Hệ số học
+  cv.folds = 5,                 # Số lượng tập gấp nếp (cross-validation)
+  verbose = FALSE               # Không hiển thị thông báo trong quá trình chạy
 )
 
-# Tính toán các giá trị cần thiết
-ss_res <- sum((comparison$Actual - comparison$Predicted)^2) # SS_res
-ss_tot <- sum((comparison$Actual - mean(comparison$Actual))^2) # SS_tot
+```
 
-# Tính RMSE
-rmse <- sqrt(mean((preds - test_target)^2))
-cat("RMSE:", rmse, "\n")
+
+* Xác định số lượng cây tối ưu dựa trên kĩ thuật cross-validation
+
+Việc chọn số lượng cây tối ưu rất quan trọng, vì nếu số lượng cây quá ít, mô hình sẽ chưa đủ mạnh để học các mẫu dữ liệu phức tạp; nếu quá nhiều cây, mô hình có thể trở nên quá phức tạp và dễ bị overfitting. \
+
+Em sẽ dựa vào Cross-validation loss  để tính số lượng cây tối ưu vì nó phản ánh khả năng tổng quát của mô hình đối với dữ liệu chưa được huấn luyện, giúp đánh giá mô hình một cách khách quan và tránh overfitting.
+
+```{r}
+best_trees <- gbm.perf(gbm_model, method ="cv") 
+```
+\
+Sai số trên tập huấn luyện (Training Loss) giảm đều khi tăng số lượng cây, điều này cho thấy mô hình dần học tốt hơn trên tập huấn luyện. \
+Sai số kiểm định chéo (CV Loss) giảm đến một mức tối thiểu rồi có xu hướng tăng trở lại, cho thấy điểm này là số cây tối ưu để tránh overfitting.
+
+* Dự đoán trên tập kiểm tra với best trees
+
+```{r}
+predictions <- predict(gbm_model, test_data, n.trees = best_trees)
+```
+
+* Kiểm tra tính chính xác của mô hình GBM
+
+```{r}
+# Tính toán R-squared và RMSE
+actual <- test_data$sales # Giá trị thực tế
+predicted <- predictions  # Giá trị dự đoán từ mô hình
 
 # Tính R-squared
-r_squared <- 1 - (ss_res / ss_tot)
-cat("R-squared:", r_squared, "\n")
-
-comparison
-```
-
-**Tối ưu hóa mô hình**
-
-Em sẽ sử dụng Bayesian Optimization (Tối ưu hóa Bayes) để tìm kiếm giá trị tối ưu cho hai tham số lambda (L2 regularization) và alpha (L1 regularization) trong mô hình XGBoost.
-
-+ lambda (λ) và alpha (α) là hai tham số quan trọng liên quan đến việc điều chỉnh độ phức tạp của mô hình, đặc biệt là trong quá trình regularization (chuẩn hóa)
-
-+ Tạo hàm tối ưu hóa xgb_bayes ( Đây là hàm mục tiêu được sử dụng bởi Bayesian Optimization để đánh giá hiệu quả của từng tổ hợp giá trị tham số.)
-
-```{r}
-xgb_bayes <- function(lambda, alpha) {
-  params <- list(
-    objective = "reg:squarederror",
-    eta = 0.1,
-    max_depth = 6,
-    lambda = lambda,
-    alpha = alpha
-  )
-  model <- xgb.train(
-    params = params,
-    data = dtrain,
-    nrounds = 100,
-    watchlist = list(val = dtest),
-    early_stopping_rounds = 10,
-    verbose = 0
-  )
-  list(Score = -model$best_score, Pred = model$best_iteration)
-}
-```
-
-+  Chỉ định phạm vi giá trị có thể thử nghiệm cho các tham số lambda & alpha.
-```{r}
-bounds <- list(
-  lambda = c(0, 10),
-  alpha = c(0, 10)
-)
-
-```
-
-+ Gọi hàm tối ưu hóa bayesOpt
-
-```{r}
-set.seed(123)
-opt <- bayesOpt(
-  FUN = xgb_bayes,
-  bounds = bounds,
-  initPoints = 5,
-  iters.n = 10,
-  verbose = 0
-)
-
-opt$scoreSummary
-
-```
-**Lấy dòng có Score tốt nhất** 
-```{r}
-
-best_row <- opt$scoreSummary[which.max(opt$scoreSummary$Score), ]
-print(best_row)
-
-```
- 
- **Tạo danh sách tham số đã tối ưu nhất**
-```{r}
-best_lambda <- best_row$lambda
-best_alpha <- best_row$alpha
-# Thiết lập Grid Search với L1 (alpha) và L2 (lambda)
-# Tạo danh sách tham số
-params <- list(
-  objective = "reg:squarederror",
-  eta = 0.1,
-  max_depth = 6,
-  gamma = 1,
-  colsample_bytree = 0.8,
-  subsample = 0.9,
-  min_child_weight = 1,
-  alpha = best_alpha,           # L1 regularization
-  lambda = best_lambda           # L2 regularization
-)
-```
-**Tìm nround tốt nhất bằng cross-validation**
-```{r}
-# Thực hiện Cross-Validation
-cv_results <- xgb.cv(
-  params = params,
-  data = train_features,
-  label = train_target,
-  nrounds = 500,
-  nfold = 5,
-  metrics = "rmse",
-  verbose = 0,
-  early_stopping_rounds = 10
-)
-
-# Số cây tốt nhất
-best_nrounds <- cv_results$best_iteration
-best_nrounds
-```
-
-**Huấn luyện mô hình cuối cùng**
-
-```{r}
-
-xgb_model_tuned <- xgboost(
-  params = params,
-  data = train_features,
-  label = train_target,
-  nrounds = best_nrounds,
-  verbose = 0,
-
-)
-```
-
-**Thưc hiện dự đoán và kkiểm tra độ chính xác**
-```{r}
-# Dự đoán trên tập kiểm tra
-predictions <- predict(
-  xgb_model_tuned,
-  newdata = test_features
-)
+ss_total <- sum((actual - mean(actual))^2)  # Tổng bình phương sai số so với giá trị trung bình
+ss_residual <- sum((actual - predicted)^2) # Tổng bình phương sai số của dự đoán
+r_squared <- 1 - (ss_residual / ss_total)
 
 # Tính RMSE
-rmse <- sqrt(mean((test_target - predictions)^2))
-cat("RMSE:", rmse, "\n")
+rmse <- sqrt(mean((actual - predicted)^2))
 
-# Tính R-squared
-ss_res <- sum((test_target - predictions)^2)
-ss_tot <- sum((test_target - mean(test_target))^2)
-r_squared <- 1 - (ss_res / ss_tot)
+# Kết quả
 cat("R-squared:", r_squared, "\n")
-
-
+cat("RMSE:", rmse, "\n")
 ```
+
+* Trực quan hóa độ chính xác trong mô hình 
+
+```{r}
+results <- data.frame(
+  Actual = actual,
+  Predicted = predicted
+)
+
+# Vẽ biểu đồ dự đoán so với giá trị thực tế
+ggplot(results, aes(x = Actual, y = Predicted)) +
+  geom_point(color = 'blue', alpha = 0.5) +  # Dữ liệu điểm
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +  # Đường chuẩn (y = x)
+  labs(title = paste("Actual vs Predicted: R-squared =", round(r_squared, 2), ", RMSE =", round(rmse, 2)),
+       x = "Actual Sales",
+       y = "Predicted Sales") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+Mô hình Gradient Boosting Machine (GBM) dự đoán doanh số bán pizza đã đạt được hiệu quả cao, thể hiện qua giá trị R-squared là 0.92, cho thấy mô hình giải thích được 92% biến thiên của dữ liệu. Giá trị Root Mean Squared Error (RMSE) là 8.04, cho thấy sai số trung bình giữa giá trị dự đoán và giá trị thực tế là khoảng 8 đơn vị. Kết quả này chứng tỏ mô hình có độ chính xác rất tốt.
 
 ## 7.4. Kết luận
 
-Trong bài toán này, mô hình hồi quy tuyến tính có độ chính xác thấp nhất (~67%), trong khi hai mô hình Random forest và XGBoost đều cho sai số dự đoán nhỏ tương đương nhau và đều có độ chính xác cao khoảng 90%. Vì vậy, em chọn random forest là mô hình cuối cùng dùng để dự đoán doanh số của sản phẩm. Quyết định này là do khi hai mô hình có hiệu suất tương đương thì nên chọn mô hình đơn giản hơn để dễ hiểu, bảo trì, triển khai, ít nguy cơ overfitting và yêu cầu ít tài nguyên tính toán hơn. Trong bài toán này, Random forest có khả năng tổng quát hóa tốt hơn mà không cần điều chỉnh quá nhiều, và các cây quyết định của nó được xây dựng một cách độc lập với nhau nên có tốc độ huấn luyện nhanh và ít nhạy cảm với nhiễu trong tập dữ liệu hơn XGBoost.\
+Trong bài toán này, mô hình hồi quy tuyến tính có độ chính xác thấp nhất (~67%), trong khi hai mô hình Random forest và GBM đều cho sai số dự đoán nhỏ tương đương nhau và đều có độ chính xác cao khoảng 92%. Vì vậy, em chọn random forest là mô hình cuối cùng dùng để dự đoán doanh số của sản phẩm. Quyết định này là do khi hai mô hình có hiệu suất tương đương thì nên chọn mô hình đơn giản hơn để dễ hiểu, bảo trì, triển khai, ít nguy cơ overfitting và yêu cầu ít tài nguyên tính toán hơn. Trong bài toán này, Random forest có khả năng tổng quát hóa tốt hơn mà không cần điều chỉnh quá nhiều, và các cây quyết định của nó được xây dựng một cách độc lập với nhau nên có tốc độ huấn luyện nhanh và ít nhạy cảm với nhiễu trong tập dữ liệu hơn mô hình GBM. \
 Ngoài ra, mô hình random forest sau khi được tối ưu đã dự đoán doanh số của sản phẩm tốt hơn rất nhiều so với mô hình hồi quy tuyến tính vì nó có khả năng nắm bắt các mối quan hệ phi tuyến tính và tương tác phức tạp giữa các biến độc lập mà mô hình hồi quy tuyến tính chưa mô tả được. Mô hình random forest còn có khả năng xử lý hiệu quả biến phân loại nhiều mức một cách tự nhiên khi xây dựng các cây quyết định, trong khi đó mô hình hồi quy tuyến tính sẽ dùng kỹ thuật one hot encoding để tạo biến giả, tăng độ phức tạp của mô hình và có thể gây ra vấn đề đa cộng tuyến. Hơn nữa, random forest ít bị ảnh hưởng bởi giá trị ngoại lai (outliers) nhờ lấy trung bình của nhiều cây quyết định, và không yêu cầu các giả định phân phối nghiêm ngặt, phù hợp với tính chất dữ liệu trong bài toán này.
 
 # Phần 8. Dự đoán doanh thu trong 6 tháng tiếp theo bằng mô hình ARIMA: 
 
 Mục tiêu của mô hình là dự báo doanh thu theo ngày của chuỗi doanh thu theo ngày(revenue_ts_date) từ dữ liệu được khai thác trong giai đoạn từ 01/01/2015 đến 20/12/2015 theo phương pháp ARIMA. 
 
-
 * Mô hình sử dụng đầu vào chính là những tín hiệu quá khứ của chuỗi được dự báo để dự báo nó.
 * Khi xây dựng mô hình ARIMA, cần phải xem xét tham số p,d,q. Đầu tiên cần phải lựa chọn tham số phù hợp cho mô hình ARIMA (p,d,q):
   + p: Số bậc của phần tự hồi quy (Auto-Regressive). Nó đại diện cho số lượng các giá trị trước đó của chuỗi thời gian được sử dụng để dự đoán giá trị hiện tại. 
-  + d: Bậc sai phân cần thực hiện để chuỗi thời gian trở nên dừng (stationary). Chuỗi thời gian được gọi là dừng nếu giá trị kỳ vọng và phương sai của nó không thay đổi theo thời gian. Sai phân giúp loại bỏ xu hướng (trend) và tính mùa vụ (seasonality) trong dữ liệu. d đại diện cho số lần sai phân để chuỗi thời gian trở nên dừng. 
-  > Phép sai phân là quá trình tính toán hiệu số giữa các giá trị liên tiếp trong chuỗi thời gian. Phép sai phân là quá trình tính toán hiệu số giữa các giá trị liên tiếp trong chuỗi thời gian. 
+  + d: Bậc sai phân cần thực hiện để chuỗi thời gian trở nên dừng (stationary). Chuỗi thời gian được gọi là dừng nếu giá trị kỳ vọng và phương sai của nó không thay đổi theo thời gian. Sai phân giúp loại bỏ xu hướng (trend) và tính mùa vụ (seasonality) trong dữ liệu. d đại diện cho số lần sai phân để chuỗi thời gian trở nên dừng. \
+  Phép sai phân là quá trình tính toán hiệu số giữa các giá trị liên tiếp trong chuỗi thời gian. Phép sai phân là quá trình tính toán hiệu số giữa các giá trị liên tiếp trong chuỗi thời gian. 
   + q: Số bậc của phần trung bình trượt (Moving Average).Nó đại diện cho số các nhiễu (error terms) trong quá khứ được sử dụng để dự đoán giá trị hiện tại.
-  * Đầu tiên, cần kiểm tra tính dừng của chuỗi thời gian: 
-  * Một chuỗi thời gian dừng có các đặc tính thống kê như trung bình và phương sai không thay đổi theo thời gian, điều này rất quan trọng cho việc xây dựng các mô hình dự báo như ARIMA. Kiểm tra tính dừng bằng ADF test (Augmented Dickey-Fuller): 
+* Đầu tiên, cần kiểm tra tính dừng của chuỗi thời gian: \
+Một chuỗi thời gian dừng có các đặc tính thống kê như trung bình và phương sai không thay đổi theo thời gian, điều này rất quan trọng cho việc xây dựng các mô hình dự báo như ARIMA. Kiểm tra tính dừng bằng ADF test (Augmented Dickey-Fuller): 
 
 ```{r}
 adf_test <- adf.test(revenue_ts_date)
 print(adf_test)
 ```
-> Kết quả kiểm định:
-Giá trị thống kê ADF (Dickey-Fuller statistic): -5.4062 - giá trị âm lớn (xa 0) thường gợi ý chuỗi có tính dừng.
-Lag order = 7 - số độ trễ được sử dụng trong kiểm định để xử lý tự tương quan.
-\
-> Giá trị p-value < 0.05, chúng ta bác bỏ giả thuyết 0 rằng chuỗi thời gian không dừng. Nghĩa là chấp nhận giả thuyết chuỗi thời gian dừng. 
-> Chuỗi thời gian dừng nên lấy d = 0
-* Tìm tham số phù hợp cho mô hình ARIMA: 
-* Xác định p, q dựa vào ACF (Auto-Correlation Function) và PACF (Partial Auto-Correlation Function):
-\
 
- * Xác định tham số p, q:  
-  q: Số lượng độ trễ có ý nghĩa trong ACF.
-  
-* Xác định hệ số tự tương quan (AFC) thông qua biểu đồ AFC. ACF đo lường tương quan giữa các quan sát hiện tại và các quan sát trễ (lags) 
+**Kết quả kiểm định**: \
+Giá trị thống kê ADF (Dickey-Fuller statistic): -5.4062 - giá trị âm lớn (xa 0) thường gợi ý chuỗi có tính dừng.
+Lag order = 7 - số độ trễ được sử dụng trong kiểm định để xử lý tự tương quan. \
+Giá trị p-value < 0.05, chúng ta bác bỏ giả thuyết 0 rằng chuỗi thời gian không dừng. Nghĩa là chấp nhận giả thuyết chuỗi thời gian dừng. \
+
+> Chuỗi thời gian dừng nên lấy d = 0
+
+* Xác định p, q dựa vào ACF (Auto-Correlation Function) và PACF (Partial Auto-Correlation Function):
+  \
+  Xác định hệ số tự tương quan (AFC) thông qua biểu đồ AFC. ACF đo lường tương quan giữa các quan sát hiện tại và các quan sát trễ (lags) 
+
 ```{r}
 # Vẽ biểu đồ ACF cho chuỗi thời gian revenue_ts_date
 acf(revenue_ts_date, main = " ACF chart for revenue_ts_date time series")
 ```
-
 \
 Trục hoành là độ trễ, trục tung là giá trị của hệ số tự tương quan tương ứng với độ trễ. Dãi màu xanh là khoảng tin cậy 95% để giá trị hệ số tự tương quan bằng 0. Nếu tại một độ trễ nhỏ nhất mà đoạn thẳng (vuông góc với trục hoành) mà độ dài đại diện cho giá trị của hệ số tự tương quan nằm ngoài khoảng tin cậy thì đó chính là độ trễ phù hợp lớn nhất mà ta nên lựa chọn cho quá trình trung bình trượt MV(q). Bậc q không nên quá lớn. 
 \
-> Phân tích đồ thị:
-> Lag = 0 chỉ là giá trị tự tương quan hoàn hảo và không liên quan đến việc xác định bậc của MA.
-> Tại lag 2, giá trị ACF vượt giới hạn tin cậy, cho thấy thành phần MA ảnh hưởng mạnh mẽ ở lag này.
-> Điều này cho thấy thành phần MA bậc q = 2 sẽ mô hình hóa tốt thành phần sai số.
+**Phân tích đồ thị**: \
+Lag = 0 chỉ là giá trị tự tương quan hoàn hảo và không liên quan đến việc xác định bậc của MA. \
+Tại lag 2, giá trị ACF vượt giới hạn tin cậy, cho thấy thành phần MA ảnh hưởng mạnh mẽ ở lag này. \
+Điều này cho thấy thành phần MA bậc q = 2 sẽ mô hình hóa tốt thành phần sai số.
 \
 
- p: Số lượng độ trễ (lags) có ý nghĩa trong PACF.
-
 * Xác định p thông qua biểu đồ PACF: 
+
 ```{r}
 pacf(revenue_ts_date, main = "PACF chart for revenue_ts_date time series")
 ```
-
 \
-Tương tự như ACF, thông qua một biểu đồ PACF về giá trị các hệ số tương quan riêng phần tương ứng với các độ trễ khác nhau, chúng ta sẽ tìm ra được các bậc tự do phù hợp. Đó chính là vị trí mà giá trị của hệ số tương quan riêng phần nằm ngoài ngưỡng tin cậy 95% của giả thuyết hệ số tương quan riêng phần bằng 0.
+Tương tự như ACF, thông qua một biểu đồ PACF về giá trị các hệ số tương quan riêng phần tương ứng với các độ trễ khác nhau, chúng ta sẽ tìm ra được các bậc tự do phù hợp. Đó chính là vị trí mà giá trị của hệ số tương quan riêng phần nằm ngoài ngưỡng tin cậy 95% của giả thuyết hệ số tương quan riêng phần bằng 0. \
+Quan sát các spike (điểm vượt ngưỡng): Có một spike lớn ở lag rất nhỏ (gần 0.01). Các spike tiếp theo (ở lag khoảng 0.02 và 0.04) cũng vượt ngưỡng nhưng nhỏ hơn. Sau đó, các giá trị PACF giảm dần và nằm trong khoảng tin cậy (giữa hai đường xanh).
 
-> Phân tích đồ thị:
-Quan sát các spike (điểm vượt ngưỡng):
-Có một spike lớn ở lag rất nhỏ (gần 0.01).
-Các spike tiếp theo (ở lag khoảng 0.02 và 0.04) cũng vượt ngưỡng nhưng nhỏ hơn.
-Sau đó, các giá trị PACF giảm dần và nằm trong khoảng tin cậy (giữa hai đường xanh).
-Nhận định:
-Spike lớn đầu tiên trong PACF cho thấy một mô hình tự hồi quy.
-Sau lag 0.04, các giá trị PACF dường như không còn đáng kể.
+> Spike lớn đầu tiên trong PACF cho thấy một mô hình tự hồi quy.
+  Sau lag 0.04, các giá trị PACF dường như không còn đáng kể.
 > Do đó, có thể xác định bậc p = 2. 
 
 * Tự động chọn tham số ARIMA (p,d,q):
@@ -1181,8 +1072,9 @@ Sau lag 0.04, các giá trị PACF dường như không còn đáng kể.
 auto_model <- auto.arima(revenue_ts_date, stepwise=FALSE, approximation=FALSE)
 summary(auto_model)
 ```
-> Dùng  stepwise=FALSE để tìm kiếm tăng độ chính xác trong việc tìm kiếm mô hình nhưng tiêu tốn thời gian tính toán nhiều hơn.
-> Approximation=FALSE sử dụng phương pháp chính xác (exact likelihood estimation), đảm bảo mô hình được chọn là tốt nhất dựa trên các tiêu chí như AIC, AICc, hoặc BIC, nhưng thời gian tính toán sẽ tăng đáng kể.
+
+Dùng  stepwise=FALSE để tìm kiếm tăng độ chính xác trong việc tìm kiếm mô hình nhưng tiêu tốn thời gian tính toán nhiều hơn. \
+Approximation=FALSE sử dụng phương pháp chính xác (exact likelihood estimation), đảm bảo mô hình được chọn là tốt nhất dựa trên các tiêu chí như AIC, AICc, hoặc BIC, nhưng thời gian tính toán sẽ tăng đáng kể. \
 
 > Tham số được chọn là ARIMA (2,0,2). Giá trị của AIC càng nhỏ thì mô hình càng phù hợp. ACF1 gần 0 cho thấy phần dư không có tự tương quan đáng kể, điều này là tốt vì nó cho thấy mô hình đã nắm bắt được cấu trúc của chuỗi thời gian.
 
@@ -1192,9 +1084,10 @@ summary(auto_model)
 # Kiểm tra phần dư của mô hình ARIMA
 checkresiduals(auto_model)
 ```
-> Kết quả kiểm định:p-value < 0.05: Chúng ta bác bỏ giả thuyết gốc, nghĩa là phần dư vẫn có tự tương quan.
-Điều này gợi ý rằng mô hình ARIMA(2,0,2) chưa đủ để mô hình hóa hoàn toàn dữ liệu, và có thể cần điều chỉnh hoặc thử nghiệm thêm các cấu trúc mô hình khác.
-> Phân phối phần dư dường như hơi lệch với đuôi dài, đặc biệt có một số phần dư cực lớn. Điều này cho thấy phân phối của phần dư không hoàn toàn tuân theo chuẩn. Các giá trị tự tương quan của phần dư không nằm hoàn toàn trong giới hạn tin cậy (đường chấm xanh), đặc biệt ở một số độ trễ (lags).
+
+Kết quả kiểm định: p-value < 0.05: Chúng ta bác bỏ giả thuyết gốc, nghĩa là phần dư vẫn có tự tương quan.
+Điều này gợi ý rằng mô hình ARIMA(2,0,2) chưa đủ để mô hình hóa hoàn toàn dữ liệu, và có thể cần điều chỉnh hoặc thử nghiệm thêm các cấu trúc mô hình khác. \
+Phân phối phần dư dường như hơi lệch với đuôi dài, đặc biệt có một số phần dư cực lớn. Điều này cho thấy phân phối của phần dư không hoàn toàn tuân theo chuẩn. Các giá trị tự tương quan của phần dư không nằm hoàn toàn trong giới hạn tin cậy (đường chấm xanh), đặc biệt ở một số độ trễ (lags).
 
 * Kiểm tra lại với các mô hình ARIMA khác nhau: 
 
@@ -1215,9 +1108,10 @@ summary(model_500)
 model_212 <- arima(revenue_ts_date, order = c(2, 1, 2))
 summary(model_212)
 ```
+
 > So sánh các chỉ số AIC cho thấy mô hình ARIMA (2,0,2) vẫn tốt hơn (do có chỉ số AIC thấp nhất).
 
-* Sau khi đã tìm ra được mô hình ARIMA tốt nhất. Chúng ta sẽ dự báo cho khoảng thời gian tiếp theo.
+Sau khi đã tìm ra được mô hình ARIMA tốt nhất. Chúng ta sẽ dự báo cho khoảng thời gian tiếp theo.
 
 * Dự đoán doanh thu trong 6 tháng (180 ngày) tiếp theo. Do điểm dữ liệu doanh thu theo tháng quá ít để xây dựng mô hình, nên sẽ dự đoán theo ngày, với số ngày là 180 ngày.    
 
@@ -1226,7 +1120,8 @@ forecast_values <- forecast(auto_model, h = 180, level = c(80))
 # Hiển thị dự đoán
 print(forecast_values)
 ```
-+ Trực quan hóa số liệu dự đoán:
+
+* Trực quan hóa số liệu dự đoán:
 
 ```{r}
 plot(forecast_values, main = "
@@ -1248,32 +1143,33 @@ Do đó, dự đoán này nên được sử dụng thận trọng, đặc biệ
 **Đánh giá về hiệu quả việc dùng mô hình ARIMA cho phân tích doanh thu trong 6 tháng tiếp theo:**
 
 1. Hiệu quả dự đoán từ đồ thị:
-Đường dự báo (forecast line): Phần dự báo có xu hướng ổn định và không có sự biến động lớn trong tương lai, thể hiện mô hình không dự đoán được các dao động hoặc bất thường tiềm tàng trong doanh thu.
+Đường dự báo (forecast line): Phần dự báo có xu hướng ổn định và không có sự biến động lớn trong tương lai, thể hiện mô hình không dự đoán được các dao động hoặc bất thường tiềm tàng trong doanh thu. \
 Dải tin cậy (confidence intervals): Dải màu xám xung quanh dự báo biểu thị khoảng tin cậy. Nó mở rộng dần khi dự đoán xa hơn, phản ánh sự không chắc chắn tăng dần. Tuy nhiên, dải tin cậy khá lớn, cho thấy mô hình chưa thực sự tốt trong việc nắm bắt các dao động phức tạp của chuỗi thời gian doanh thu.
 
 2. Phân tích phần dư (Residuals):
-Ljung-Box Test:
-Kết quả kiểm định: 𝑝 – value < 2.2𝑒−16, cho thấy phần dư không độc lập. Điều này chỉ ra rằng mô hình ARIMA chưa xử lý hoàn toàn các tự tương quan trong chuỗi thời gian.
-Phần dư: Từ các đồ thị ACF và PACF của phần dư, có vẻ vẫn còn sự tự tương quan ở các lag, đặc biệt ở những lag nhỏ (lag 1, lag 2,...).
+Ljung-Box Test: \
+Kết quả kiểm định: 𝑝 – value < 2.2𝑒−16, cho thấy phần dư không độc lập. Điều này chỉ ra rằng mô hình ARIMA chưa xử lý hoàn toàn các tự tương quan trong chuỗi thời gian. \
+Phần dư: Từ các đồ thị ACF và PACF của phần dư, có vẻ vẫn còn sự tự tương quan ở các lag, đặc biệt ở những lag nhỏ (lag 1, lag 2,...). \
 Điều này chỉ ra rằng mô hình chưa tối ưu trong việc mô hình hóa toàn bộ cấu trúc chuỗi thời gian, có thể do thiếu các biến số ngoại sinh hoặc yếu tố mùa vụ chưa được xử lý tốt.
+
 3. Đánh giá thông số mô hình:
-AR(2), MA(2) có ý nghĩa thống kê, nhưng sigma^2 (150622) khá lớn, biểu thị sai số dự đoán còn cao.
+AR(2), MA(2) có ý nghĩa thống kê, nhưng sigma^2 (150622) khá lớn, biểu thị sai số dự đoán còn cao. \
 BIC và AIC đều cho thấy mức độ phức tạp tương đối của mô hình (AIC = 5292.13). Tuy nhiên, việc tối ưu thêm mô hình có thể giảm giá trị này.
 
 4. Tổng quan về hiệu quả:
-Ưu điểm:
-Mô hình ARIMA có thể nắm bắt được xu hướng tổng quan và phần nào dự đoán được các mức giá trị trung bình của doanh thu trong tương lai.
-Phù hợp để dự báo ngắn hạn với dữ liệu không quá phức tạp hoặc ít dao động mạnh.
-Nhược điểm:
-Chưa xử lý tốt tính mùa vụ hoặc các yếu tố ngoại sinh có ảnh hưởng lớn đến doanh thu.
-Độ tin cậy của dự báo trong dài hạn thấp, thể hiện qua dải tin cậy lớn.
-Phần dư không hoàn toàn ngẫu nhiên, cho thấy cần xem xét các mô hình khác.
+Ưu điểm: \
+Mô hình ARIMA có thể nắm bắt được xu hướng tổng quan và phần nào dự đoán được các mức giá trị trung bình của doanh thu trong tương lai. \
+Phù hợp để dự báo ngắn hạn với dữ liệu không quá phức tạp hoặc ít dao động mạnh. \
+Nhược điểm: \
+Chưa xử lý tốt tính mùa vụ hoặc các yếu tố ngoại sinh có ảnh hưởng lớn đến doanh thu. \
+Độ tin cậy của dự báo trong dài hạn thấp, thể hiện qua dải tin cậy lớn. \
+Phần dư không hoàn toàn ngẫu nhiên, cho thấy cần xem xét các mô hình khác. \
 
 5. Kết luận và đề xuất tối ưu:
-Cải thiện mô hình:
-Đánh giá thêm dữ liệu:
-Tăng số lượng dữ liệu lịch sử hoặc kiểm tra các đặc điểm phức tạp khác của chuỗi (dao động không theo quy luật).
-Hiệu quả:
+Cải thiện mô hình: \
+Đánh giá thêm dữ liệu: \
+Tăng số lượng dữ liệu lịch sử hoặc kiểm tra các đặc điểm phức tạp khác của chuỗi (dao động không theo quy luật). \
+Hiệu quả: \
 ARIMA phù hợp cho dự báo ngắn hạn, nhưng nếu muốn độ chính xác cao hơn cho các dự báo 6 tháng hoặc dài hạn, cần tối ưu thêm mô hình. 
 
 # Phần 9. Kết luận:
@@ -1282,14 +1178,15 @@ Mục tiêu của đề tài là thực hiện bài toán phân tích dữ liệ
 
 # Phần 10. Tài liệu tham khảo:
 
-1. Winton Clem, Analysis of Data and the Field of Data Science, First edition, 2024.
-2. Peter J. Brockwell, Richard A. Davis, Introduction to Time Series and Forecasting, 2nd ed, Nxb. Springer, 2002. 
-3. Joshua Noble, What are ARIMA models?, ibm.com, https://www.ibm.com/topics/arima-model, 24/05/2024, truy cập ngày 10/12/2014. 
-4. G.E. Box, G.M. Jenkins, G.C. Reinsel and G.M. Ljung, Time series analysis: forecasting and control, 4th ed, John Wiley & Sons, 2016. 
-5. Phạm Đình Khánh,  Mô hình ARIMA trong time series, 12/12/2019, https://phamdinhkhanh.github.io/2019/12/12/ARIMAmodel.html#42-ch%E1%BB%89-s%E1%BB%91-aic---akaike-information-criteria, truy cập ngày 12/11/2024. 
-6. Prabhakaran Selva, ARIMA Model – Complete Guide to Time Series Forecasting in Python, Machine Learning Plus, machinelearningplus.com, https://www.machinelearningplus.com/time-series/arima-model-time-series-forecasting-python/, 09/12/2019, truy cập ngày 15/11/2024. 
+1. Winton Clem (2024), Analysis of Data and the Field of Data Science, First edition
+2. Peter J. Brockwell & Richard A. Davis (2002), Introduction to Time Series and Forecasting, 2nd ed, Nxb. Springer.
+3. Joshua Noble, What are ARIMA models?, ibm.com, https://www.ibm.com/topics/arima-model, truy cập ngày 10/11/2024. 
+4. G.E. Box, G.M. Jenkins, G.C. Reinsel and G.M. Ljung (2016), Time series analysis: forecasting and control, 4th ed, John Wiley & Sons. 
+5. Phạm Đình Khánh (2019), Mô hình ARIMA trong time series, https://phamdinhkhanh.github.io/2019/12/12/ARIMAmodel.html#42-ch%E1%BB%89-s%E1%BB%91-aic---akaike-information-criteria, truy cập ngày 12/11/2024. 
+6. Prabhakaran Selva (2019), ARIMA Model – Complete Guide to Time Series Forecasting in Python, Machine Learning Plus, machinelearningplus.com, https://www.machinelearningplus.com/time-series/arima-model-time-series-forecasting-python/, truy cập ngày 15/11/2024.
 7. Deepanshu Bhalla, Random Forest in R: A Step-by-Step Guide, Listen Data, https://www.listendata.com/2014/11/random-forest-with-r.html, truy cập ngày 10/11/2024
-
+8. Rebecca Bevans (2020), ANOVA in R, Scribbr, https://www.scribbr.com/statistics/anova-in-r/, truy cập ngày 04/11/2024.
+9.Zach Bobbitt (2022), How to Perform a Kruskal-Wallis Test in R, Statology, https://www.statology.org/kruskal-wallis-test-in-r/, truy cập ngày 10/11/2024.
 
 # Phần 11. Đóng góp:
 
@@ -1309,7 +1206,7 @@ Mục tiêu của đề tài là thực hiện bài toán phân tích dữ liệ
 - Tổng hợp file Word. |
 |  3  |  22133043 | Võ Triệu Phúc  | - Thông tin về tập dữ liệu (Phần 4). \
 - Tiền xử lý dữ liệu (Phần 5) \
-- Dự đoán doanh số bằng mô hình XGBoost (7.3).|
+- Dự đoán doanh số bằng mô hình GBM (7.3).|
 |  4  |  22151305 | Nguyễn Thị Hồng Thơ  | - Phân tích tổng quan dữ liệu (6.1). \
 - Phân tích doanh thu (6.5). \
 - Dự đoán doanh thu theo thời gian (Phần 8). \
@@ -1322,22 +1219,30 @@ Mục tiêu của đề tài là thực hiện bài toán phân tích dữ liệ
 | Thành viên      | Nhận xét     | Đánh giá (%)     |
 |------------|-----------|-----------|
 | Nguyễn Hoàng     | Hoàn thành đúng tiến độ. Sử dụng đa dạng biểu đồ, nhận xét các biểu đồ rất chi tiết. | 100 |
-| Võ Triệu Phúc     | Giải thích tập dữ liệu bằng AI nhưng không kiểm tra lại, xác định sai kiểu dữ liệu của order_date, unit_price,... Trễ hạn của nhóm. Xây dựng được mô hình XGBoost nhưng chưa nhận xét. | 85 |
-| Nguyễn Thị Hồng Thơ    | Hoàn thành tốt nhiệm vụ. | 100 |
+| Võ Triệu Phúc     | Hoàn thành nhiệm vụ nhưng hay trễ hạn của nhóm. | 95 |
+| Nguyễn Thị Hồng Thơ    | Hoàn thành nhiệm vụ và đưa ra nhận xét rất chi tiết. | 100 |
 
 ### Nguyễn Hoàng
 
 | Thành viên      | Nhận xét     | Đánh giá (%)     |
 |------------|-----------|-----------|
-| Nguyễn Thị Ngọc Hân     | Phân công việc cụ thể cho thành viên, đảm bảo tiến độ của nhóm. Hoàn thành tốt nhiệm vụ | 100 |
-| Võ Triệu Phúc     | Hoàn thành nhiệm vụ | 100 |
-| Nguyễn Thị Hồng Thơ    | Hoàn thành tốt nhiệm vụ | 100 |
+| Nguyễn Thị Ngọc Hân     | Phân công việc cụ thể cho thành viên, đảm bảo tiến độ của nhóm. Phân tích và trực quan rõ ràng, chi tiết các yếu tố ảnh hưởng đến doanh số. Đưa ra đánh giá và kết luận về mô hình chi tiết; mô hình được tối ưu với độ tin cậy cao. | 100 |
+| Võ Triệu Phúc     | Hoàn thành tốt nhiệm vụ, làm sạch và xử lý được dữ liệu dư thừa chuẩn bị cho phân tích và xây dựng mô hình | 100 |
+| Nguyễn Thị Hồng Thơ    | Trực quan hóa rõ ràng, phân tích, đánh giá doanh thu chi tiết theo các khoảng thời gian khác nhau. Xây dựng mô hình ARIMA chi tiết với các trực quan, nhận xét và giải thích cho các tham số thống kê; kiểm tra và đánh giá  mô hình tối ưu. | 100 |
+
+### Võ Triệu Phúc
+
+| Thành viên      | Nhận xét     | Đánh giá (%)     |
+|------------|-----------|-----------|
+| Nguyễn Thị Ngọc Hân     | Phân công việc cụ thể cho thành viên, đảm bảo tiến độ của nhóm. Hoàn thành tốt nhiệm vụ. | 100 |
+| Nguyễn Hoàng     | Hoàn thành đúng tiến độ. Nhận xét biểu đồ rất chi tiết. | 100 |
+| Nguyễn Thị Hồng Thơ    | Hoàn thành đúng tiến độ, phân tích và tổng hợp được các thông tin quan trọng từ tập dữ liệu. Xây dựng mô hình ARIMA chi tiết với các trực quan, nhận xét và giải thích cho các tham số thống kê; kiểm tra và đánh giá  mô hình tối ưu. | 100 |
 
 ### Nguyễn Thị Hồng Thơ
 
 | Thành viên      | Nhận xét     | Đánh giá (%)     |
 |------------|-----------|-----------|
 | Nguyễn Hoàng     | Hoàn thành đúng tiến độ. Nhận xét biểu đồ rất chi tiết | 100 |
-| Võ Triệu Phúc     | Hoàn thành nhiệm vụ | 100 |
-| Nguyễn Thị Ngọc Hân   | Phân công việc cụ thể cho nhóm, kiểm tra lại các việc thường xuyên. Hoàn thành đúng tiến độ. | 100 |
+| Võ Triệu Phúc     | Thực hiện nhiệm vụ rõ ràng, chi tiết  | 100 |
+| Nguyễn Thị Ngọc Hân   | Phân công việc cụ thể cho nhóm, kiểm tra lại các việc thường xuyên. Hoàn thành đúng tiến độ. Đưa ra đánh giá và kết luận về mô hình chi tiết. | 100 |
 
