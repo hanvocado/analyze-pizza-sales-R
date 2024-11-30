@@ -41,7 +41,7 @@ library(ParBayesianOptimization)
 
 # Phần 1. Tóm tắt
 
-  Nghiên cứu này dùng ngôn ngữ R để phân tích và xây dựng mô hình dự đoán trên tập dữ liệu bán hàng pizza trong quá khứ. Các biểu đồ Histogram, Boxplot, Line, Bar, Pie, Point, và WordCloud được ứng dụng để trực quan hóa xu hướng trong nhu cầu pizza theo thời gian, tìm ra các thành phần nguyên liệu được thường xuyên sử dụng, thể hiện doanh số, doanh thu của cửa hàng... Đối với doanh số (số lượng pizza bán ra), kiểm định Kruskal-Wallis được dùng để kiểm tra sự biến động doanh số của từng pizza giữa các tháng có đáng kể không. Sau đó các mô hình khác nhau đã được sử dụng để thực hiện dự đoán doanh số: Mô hình Hồi quy tuyến tính được chọn do tính đơn giản và khả năng giải thích dễ dàng, trong khi Rừng ngẫu nhiên và XGBoost được chọn để xử lý các mối quan hệ phức tạp giữa các biến độc lập. Bên cạnh đó, mô hình ARIMA được dùng để dự đoán doanh thu cho 6 tháng tiếp theo.
+  Nghiên cứu này dùng ngôn ngữ R để phân tích và xây dựng mô hình dự đoán trên tập dữ liệu bán hàng pizza trong quá khứ. Các biểu đồ Histogram, Boxplot, Line, Bar, Pie, Point, và WordCloud được ứng dụng để trực quan hóa xu hướng trong nhu cầu pizza theo thời gian, tìm ra các thành phần nguyên liệu được thường xuyên sử dụng, thể hiện doanh số, doanh thu của cửa hàng... Đối với doanh số, kiểm định Kruskal-Wallis được dùng để kiểm tra sự biến động doanh số của từng pizza giữa các tháng có đáng kể không và ANOVA được dùng để so sánh sự chênh lệch doanh số giữa các danh mục bánh. Sau đó các mô hình khác nhau đã được sử dụng để thực hiện dự đoán doanh số: Mô hình Hồi quy tuyến tính được chọn do tính đơn giản và khả năng giải thích dễ dàng, trong khi Rừng ngẫu nhiên và XGBoost được chọn để xử lý các mối quan hệ phức tạp giữa các biến độc lập. Bên cạnh đó, mô hình ARIMA được dùng để dự đoán doanh thu cho 6 tháng tiếp theo.
 
 # Phần 2. Giới thiệu
     
@@ -145,7 +145,7 @@ Dữ liệu của cột order_time là kiểu POSIXct, được lưu trữ dư�
 temp_time <- format(df$order_time, "%H:%M:%S")
 df <- df %>% mutate(order_hour = sub("(..):..:..", "\\1", temp_time))
 
-df
+head(df)
 ```
 
 #### Tạo cột order_weekday
@@ -442,9 +442,9 @@ ggplot(sales_by_size, aes(x = "", y = total_sales, fill = pizza_size)) +
   labs(title = "Sales by sizes in 2015") +
   theme_void()
 ```
-
-  + Bánh pizza cỡ L bán chạy nhất với 18956 chiếc bánh chiếm 38% doanh số, theo sau là cỡ M với 15635 bánh (32%) và cỡ S với 14403 bánh (29%).
-  + Bánh size XL và XXL có doanh số rất thấp, cả hai chỉ chiếm chưa tới 2% tổng doanh số của năm 2015.
+\
+Bánh pizza cỡ L bán chạy nhất với 18956 chiếc bánh chiếm 38% doanh số, theo sau là cỡ M với 15635 bánh \ (32%) và cỡ S với 14403 bánh (29%).
+Bánh size XL và XXL có doanh số rất thấp, cả hai chỉ chiếm chưa tới 2% tổng doanh số của năm 2015.
 
 ### 6.4.2. Phân tích doanh số theo danh mục bánh
 
@@ -468,9 +468,19 @@ ggplot(sales_by_category, aes(x = pizza_category, y = total_sales, fill = order_
        fill = "Month") +
   theme_minimal()
 ```
+\
+Danh mục bánh Classic bánh chạy nhất với 14888 chiếc. Ba loại còn lại có sự chênh lệch không đáng kể với nhau, cụ thể Supreme là 11987, Veggie là 11649 và thấp nhất là Chicken với 11050 chiếc bánh.\
+Đối với từng danh mục pizza, doanh số không có sự chênh lệch nào đáng kể giữa các tháng.
+  
+#### Kiểm tra sự chênh lệch trong doanh số giữa các danh mục pizza có ý nghĩa thống kê không bằng One-way ANOVA
 
-  + Danh mục bánh Classic bánh chạy nhất với 14888 chiếc. Ba loại còn lại có sự chênh lệch không đáng kể với nhau, cụ thể Supreme là 11987, Veggie là 11649 và thấp nhất là Chicken với 11050 chiếc bánh.
-  + Đối với từng danh mục pizza, doanh số không có sự chênh lệch nào đáng kể giữa các tháng.
+One-Way ANOVA (One-Way Analysis of Variance) là một phương pháp kiểm định thống kê được sử dụng để so sánh trung bình của nhiều nhóm dựa trên một đặc trưng. Phương pháp kiểm định này so sánh phương sai giữa các nhóm với phương sai trong từng nhóm thông qua F-statistic.
+
+```{r}
+anova_result <- aov(total_sales ~ pizza_category, data = sales_by_category)
+summary(anova_result)
+```
+Kết quả có p-value (Pr(>F)) < 2e-16, gần bằng 0 nên ta có đủ bằng chứng để *bác bỏ giả thuyết không*. Bên cạnh đó, F value bằng 90, giá trị cao này cho thấy rằng sự khác biệt doanh số giữa các danh mục pizza lớn hơn nhiều so với sự biến động giữa các tháng của từng danh mục. Vì vậy, sự chênh lệch trong doanh số giữa các danh mục pizza là đáng kể hay nói cách khác là danh mục có tác động đến doanh số.
 
 ### 6.4.3. Phân tích doanh số bán hàng của từng bánh pizza
 
@@ -498,9 +508,9 @@ sales_by_pizza %>%
        y = "Pizza") +
   theme_minimal()
 ```
-
-  + Pizza bán chạy nhất là The Classic Deluxe Pizza với 2453 bánh.
-  + Pizza bán chậm nhất là The Brie Carre Pizza với 490 bánh. Ta có thể dễ dàng nhận thấy sự chênh lệch rất lớn giữa doanh số của nó với các bánh khác, trong đó, chỉ bằng khoảng 50% doanh số của pizza bán chậm thứ hai (The Mediterranean Pizza) và bằng khoảng 20% doanh số của bánh bán chạy nhất.
+\
+Pizza bán chạy nhất là The Classic Deluxe Pizza với 2453 bánh. \
+Pizza bán chậm nhất là The Brie Carre Pizza với 490 bánh. Ta có thể dễ dàng nhận thấy sự chênh lệch rất lớn giữa doanh số của nó với các bánh khác, trong đó, chỉ bằng khoảng 50% doanh số của pizza bán chậm thứ hai (The Mediterranean Pizza) và bằng khoảng 20% doanh số của bánh bán chạy nhất.
 
 ##### Xem các thuộc tính của ba bánh này để dự đoán nguyên nhân gây ra sự chênh lệch lớn 
 
@@ -735,13 +745,22 @@ lm_sales_model <- lm(sales ~ pizza_name + unit_price * (pizza_size + pizza_categ
 summary(lm_sales_model)
 ```
 
-F-statistic bằng 55.94 với p-value < 2.2e-16, cho thấy rằng **mô hình hồi quy này có ý nghĩa thống kê**. Cụ thể về ý nghĩa thống kê của từng biến, các biến giả của pizza_category bị thiếu giá trị, nhưng các biến tương tác của nó với unit_price có p-value rất thấp, chứng tỏ **đưa sự tương tác này vào mô hình là hợp lý**. Một số biến dummy của pizza_name, pizza_size có p-value lớn hơn 0.05 nhưng đa số có p-value nhỏ, chứng tỏ **các biến độc lập này có ý nghĩa trong mô hình**.
+F-statistic gần bằng 56 với p-value < 2.2e-16, cho thấy rằng **mô hình hồi quy này có ý nghĩa thống kê**. Cụ thể về ý nghĩa thống kê của từng biến, các biến giả của pizza_category bị thiếu giá trị (NA), nhưng các biến tương tác của nó với unit_price có p-value rất thấp, chứng tỏ **đưa sự tương tác này vào mô hình là hợp lý**. Một số biến dummy của pizza_name, pizza_size có p-value lớn hơn 0.05 nhưng đa số có p-value nhỏ, chứng tỏ **các biến độc lập này có ý nghĩa trong mô hình**.
 \
 Multiple R-squared bằng 0.6862 và Adjusted R-squared bằng 0.6739 cho thấy **mô hình giải thích khoảng 67% sự biến động của doanh số trong tập dữ liệu**. Mặc dù không quá cao, giá trị này vẫn cho thấy mô hình có thể giải thích một phần đáng kể sự biến động doanh số trong tập dữ liệu.
 
 ## 7.2. Dự đoán doanh số theo sản phẩm bằng random forest
 
-Random Forest là một mô hình học máy có giám sát (supervised learning), thường được dùng khi các quan hệ giữa các biến đầu vào và biến mục tiêu là phức tạp hoặc không tuyến tính. Em chọn Random Forest để so sánh với Linear Regression, vì mô hình này có khả năng xử lý và học những mối quan hệ phức tạp giữa các yếu tố ảnh hưởng đến doanh số của sản phẩm như đơn giá, kích cỡ,... mà mô hình tuyến tính không thể nắm bắt.
+Random Forest là một mô hình học máy có giám sát (supervised learning), bao gồm nhiều cây quyết định (decison tree), thường được dùng khi các quan hệ giữa các biến đầu vào và biến mục tiêu là phức tạp hoặc không tuyến tính. Em chọn Random Forest để so sánh với Linear Regression, vì mô hình này có khả năng xử lý và học những mối quan hệ phức tạp giữa các yếu tố ảnh hưởng đến doanh số của sản phẩm như đơn giá, kích cỡ,... mà mô hình tuyến tính không thể nắm bắt.
+
+* Mỗi cây trong rừng được xây dựng theo các bước:
+
+  + Tạo tập dữ liệu huấn luyện: Từ tập dữ liệu huấn luyện ban đầu (train data), thuật toán tạo ra tập dữ liệu huấn luyện mới bằng cách lấy mẫu ngẫu nhiên có hoàn lại (bootstrap sampling with replacement) trên 2/3 dữ liệu. 1/3 dữ liệu bị bỏ qua được gọi là out-of-bag samples.
+  + Huấn luyện cây: Tại mỗi bước tách nhánh (node split), Random Forest không sử dụng toàn bộ các đặc trưng mà chỉ chọn ngẫu nhiên m đặc trưng (m~try~). Điều này giúp giảm sự phụ thuộc vào bất kỳ đặc trưng nào và tăng tính đa dạng của các cây.
+  
+* Kết quả cuối cùng của bài toán được tính bằng cách lấy trung bình kết quả của tất cả các cây trong rừng (do đây là bài toán hồi quy, đối với bài toán phân loại thì lấy đa số phiếu).
+
+### Thực hiện xây dựng mô hình
 
 * Chia tập dữ liệu thành 80% cho huấn luyện và 20% cho kiểm tra.
 
@@ -770,7 +789,7 @@ Thông tin về mô hình:
   + Từ giá trị trung bình bình phương phần dư (Mean of squared residuals), ta có sai lệch trung bình giữa các giá trị dự đoán và giá trị thực tế của doanh số là khoảng 15 đơn vị (RMSE), bằng 13% giá trị trung bình của sales.
   + Mô hình đã giải thích được 69% sự biến động của doanh số dựa trên các đặc trưng đầu vào.
 
-> Mô hình này khá đáng tin cậy (RMSE không quá cao) nhưng khả năng dự đoán vẫn còn khá thấp.
+> Mô hình này khá đáng tin cậy (RMSE khá thấp) nhưng khả năng dự đoán vẫn còn khá thấp.
 
 ### Tối ưu hóa mô hình
 
@@ -790,22 +809,32 @@ Biểu đồ cho thấy **500 cây là phù hợp** vì error tại đây đã r
 tune_rf <- tuneRF(sales_data[, -which(names(sales_data) == "sales")], sales_data$sales)
 ```
 \
-OOB Error rate là lỗi ngoài bộ dữ liệu huấn luyện, phản ánh độ chính xác của mô hình. Dự vào biểu đồ kết hợp với việc dữ liệu có 4 biến độc lập, mà nhiều biến các sự tương tác phức tạp với nhau nên em **chọn mtry = 2 để tối ưu mô hình**.
+OOB error rate là lỗi ngoài bộ dữ liệu huấn luyện, được tính dựa trên sự chênh lệch giữa giá trị thực và giá trị dự đoán của các mẫu OOB. Thông số này phản ánh độ chính xác của mô hình, OOB error rate càng thấp thì mô hình càng chính xác. Dự vào biểu đồ kết hợp với việc dữ liệu có 4 biến độc lập, mà nhiều biến có sự tương tác phức tạp với nhau nên em **chọn m~try~ = 2 và 3 để tối ưu mô hình**.
 
-* Thực hiện tối ưu mô hình với tham số đã chọn:
+* Thực hiện tối ưu mô hình với m~try~ = 2:
 
 ```{r}
-rf_sales_model <- randomForest(sales ~ pizza_name + unit_price + pizza_size + pizza_category, data = train_data, mtry = 2)
+rf_sales_model_2 <- randomForest(sales ~ pizza_name + unit_price + pizza_size + pizza_category, data = train_data, mtry = 2)
 
-rf_sales_model
+rf_sales_model_2
 ```
 
-> Từ Mean of squard residuals ta có RMSE bằng khoảng 8.6, giảm 6 đơn vị so với mô hình random forest ban đầu. Và R^2^ bằng 90%, tăng 20%. Chứng tỏ giá trị mtry = 2 là giá trị phù hợp để tối ưu mô hình. Chọn đây là mô hình dự đoán cuối cùng.
+> Từ Mean of squard residuals ta có RMSE bằng khoảng 8.6, giảm 6 đơn vị so với mô hình random forest ban đầu. Và R^2^ bằng 90%, tăng 20%. Chứng tỏ giá trị m~try~ = 2 là giá trị phù hợp để tối ưu mô hình. Chọn đây là mô hình dự đoán cuối cùng.
+
+* Thực hiện tối ưu mô hình với m~try~ = 3:
+
+```{r}
+rf_sales_model_3 <- randomForest(sales ~ pizza_name + unit_price + pizza_size + pizza_category, data = train_data, mtry = 3)
+
+rf_sales_model_3
+```
+
+> Kết quả cho thấy Mean of squard residuals thấp và R^2^ cao hơn cả mô hình có m=2. Chọn đây là mô hình dự đoán cuối cùng.
 
 * Dự đoán doanh số trên tập dữ liệu kiểm tra
 
 ```{r}
-predicted_sales <- predict(rf_sales_model, newdata = test_data)
+predicted_sales <- predict(rf_sales_model_3, newdata = test_data)
 
 head(predicted_sales)
 ```
@@ -822,7 +851,7 @@ r_squared <- 1 - (ss_residual / ss_total)
 cat("R-squared: ", r_squared)
 ```
 
-Mô hình đã giải thích được 90% sự biến thiên của sales trong tập dữ liệu kiểm tra.
+Mô hình đã giải thích được 92% sự biến thiên của sales trong tập dữ liệu kiểm tra.
 
 * Tính toán lỗi RMSE (Root Mean Squared Error)
 
@@ -831,9 +860,9 @@ rmse <- sqrt(mean((predicted_sales - actual_values)^2))
 cat("RMSE: ", rmse)
 ```
 
-Trung bình, giá trị doanh số dự đoán và giá trị thực tế của nó chênh lệch nhau khoảng 9 đơn vị, bằng khoảng 8% giá trị trung bình của sales.
+Trung bình, giá trị doanh số dự đoán và giá trị thực tế của nó chênh lệch nhau khoảng 8 đơn vị, bằng khoảng 8% giá trị trung bình của sales.
 
-> Mô hình có R-squared cao khoảng 90% trên cả tập dữ liệu huấn luyện và tập kiểm tra, nên có thể kết luận rằng mô hình không bị overfitting và đạt hiệu quả dự đoán rất tốt. Bên cạnh đó, sai số dự đoán (RMSE) nhỏ cho thấy đây là mô hình rất đáng tin cậy để dự đoán doanh số.
+> Mô hình có R-squared cao trên cả tập dữ liệu huấn luyện và tập kiểm tra, nên có thể kết luận rằng mô hình không bị overfitting và đạt hiệu quả dự đoán rất tốt. Bên cạnh đó, sai số dự đoán (RMSE) nhỏ cho thấy đây là mô hình rất đáng tin cậy để dự đoán doanh số.
 
 ## 7.3 Dự đoán doanh số bằng mô hình XGBoost
 
@@ -1259,6 +1288,7 @@ Mục tiêu của đề tài là thực hiện bài toán phân tích dữ liệ
 4. G.E. Box, G.M. Jenkins, G.C. Reinsel and G.M. Ljung, Time series analysis: forecasting and control, 4th ed, John Wiley & Sons, 2016. 
 5. Phạm Đình Khánh,  Mô hình ARIMA trong time series, 12/12/2019, https://phamdinhkhanh.github.io/2019/12/12/ARIMAmodel.html#42-ch%E1%BB%89-s%E1%BB%91-aic---akaike-information-criteria, truy cập ngày 12/11/2024. 
 6. Prabhakaran Selva, ARIMA Model – Complete Guide to Time Series Forecasting in Python, Machine Learning Plus, machinelearningplus.com, https://www.machinelearningplus.com/time-series/arima-model-time-series-forecasting-python/, 09/12/2019, truy cập ngày 15/11/2024. 
+7. Deepanshu Bhalla, Random Forest in R: A Step-by-Step Guide, Listen Data, https://www.listendata.com/2014/11/random-forest-with-r.html, truy cập ngày 10/11/2024
 
 
 # Phần 11. Đóng góp:
